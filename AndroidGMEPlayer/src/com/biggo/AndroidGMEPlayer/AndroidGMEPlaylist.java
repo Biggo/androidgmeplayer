@@ -21,36 +21,33 @@ public class AndroidGMEPlaylist extends ListActivity {
         try {
         	super.onCreate(icicle);
         	setContentView(R.layout.songlist);
-        	Bundle extras  = getIntent().getExtras(); 
-        	if(extras != null)
+        	
+        	playlist = Library.getCurrentPlaylist();  
+        	if(playlist != null)
         	{
-        		int type = extras.containsKey("PlaylistType")?extras.getInt("PlaylistType"):Playlist.TYPE_ALL;
-        		String tag = extras.containsKey("PlaylistTag")?extras.getString("PlaylistTag"):""; 
-        		int pos = extras.containsKey("CurrentTrack")?extras.getInt("CurrentTrack"):0; 
-        		populatePlayList(type, tag);
-        		setSelection(pos);
+        		int pos = playlist.getCurrentTrackIdx();
+	    		populatePlayList();
+	    		setSelection(pos);
         	}
+        
         } catch (NullPointerException e) {
         	Log.v(getString(R.string.app_name), e.getMessage());
         }
     }
     
-    public void populatePlayList(int type, String tag) {
-    	if(playlist == null)
-    		playlist = Library.getPlaylist(type, tag);		
-    		ArrayAdapter<String> songList = new ArrayAdapter<String>(this,R.layout.song_item,playlist.getSongs());
-    		setListAdapter(songList);
-    		
+    public void populatePlayList()
+    {
+		ArrayAdapter<String> songList = new ArrayAdapter<String>(this,R.layout.song_item,playlist.getSongs());
+		setListAdapter(songList);	
     }
     
 	@Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
 		try {
-			Library.setCurrentPlaylist(playlist);			
-            Intent in = getIntent();
-            in.putExtra("TrackNumber", position);
-            setResult( RESULT_OK, in);
-            finish();
+    		Intent in = new Intent(AndroidGMEPlaylist.this, PlayerService.class);
+    		in.setAction(PlayerService.ACTION_CHANGE_TRACK);
+        	in.putExtra("TrackNumber", position);
+        	startService(in);
 		} catch(Exception e) {
 		} 
 	}

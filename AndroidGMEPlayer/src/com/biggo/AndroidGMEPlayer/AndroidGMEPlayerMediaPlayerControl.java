@@ -1,5 +1,6 @@
 package com.biggo.AndroidGMEPlayer;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -10,13 +11,12 @@ import android.widget.MediaController.MediaPlayerControl;
 public class AndroidGMEPlayerMediaPlayerControl implements MediaPlayerControl {
 
 	private PlayerService playerService;
-	private ServiceConnection mConnection;
-
+	private ServiceConnection mConnection;	
 	private boolean mIsBound = false;
+	private Context mContext;
 	
-	
-	public AndroidGMEPlayerMediaPlayerControl(AndroidGMEPlayer source) {    
-        
+	public AndroidGMEPlayerMediaPlayerControl(Activity source) {
+		mContext = source.getApplicationContext();
     	mConnection = new ServiceConnection() {
             public void onServiceConnected(ComponentName className, IBinder service) {
                 // This is called when the connection with the service has been
@@ -36,10 +36,26 @@ public class AndroidGMEPlayerMediaPlayerControl implements MediaPlayerControl {
             }
         };        
         mIsBound = source.bindService(new Intent(source, PlayerService.class), mConnection, Context.BIND_AUTO_CREATE);
-		
 	}
-    
-    @Override
+	
+	public void unbind()
+	{
+		if(mIsBound)
+		{
+			try
+			{
+				mContext.unbindService(mConnection);
+				mIsBound = false;
+			}
+			catch (Exception e)
+			{
+				//this is bad, but I don't know why I'm getting "Service not registered"
+			}
+		}
+
+	}
+
+	@Override
     public int getBufferPercentage() {
     	return 100;
     }
