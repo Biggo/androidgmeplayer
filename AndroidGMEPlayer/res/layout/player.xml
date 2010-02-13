@@ -4,27 +4,27 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:id="@layout/player">
-<TextView android:layout_width="wrap_content" android:id="@+layout/txtFile" android:layout_height="wrap_content"></TextView><TextView  
+<TextView android:layout_width="wrap_content" android:id="@+id/txtFile" android:layout_height="wrap_content"></TextView><TextView  
     android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" android:id="@+layout/txtTracks"/>
+    android:layout_height="wrap_content" android:id="@+id/txtTracks"/>
 
 
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtSong"></TextView>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtSong"></TextView>
 
 
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtGame"></TextView>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtSystem"></TextView>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtAuthor"></TextView>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtCopyright"></TextView>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtComment"></TextView>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtDumper"></TextView>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtGame"></TextView>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtSystem"></TextView>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtAuthor"></TextView>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtCopyright"></TextView>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtComment"></TextView>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtDumper"></TextView>
 
 
 
 
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/PlayerButtonLayout" android:orientation="horizontal">
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+layout/txtShuffle"></TextView>
-<ToggleButton android:text="@+layout/btnShuffleToggle" android:id="@+layout/btnShuffleToggle" android:layout_width="wrap_content" android:layout_height="wrap_content"></ToggleButton>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtShuffle"></TextView>
+<ToggleButton android:text="@+id/btnShuffleToggle" android:id="@+id/btnShuffleToggle" android:layout_width="wrap_content" android:layout_height="wrap_content"></ToggleButton>
 </LinearLayout>
 
 </LinearLayout>

@@ -140,43 +140,57 @@ public class Library {
 	private static boolean addFileToLibrary(File file)
 	{
 		String path = file.getAbsolutePath();
-		String filename = file.getName();
+		String filename = file.getName().toLowerCase();
 		String[] fileInfo;
 		GMEPlayerLib gme = new GMEPlayerLib();
 		int type;
 		
-		if(path.endsWith(".nsf"))
+		boolean multiTrackFile = false;
+		
+		if(filename.endsWith(".nsf"))
 		{
 			type = Track.TYPE_NSF;
-			fileInfo = gme.getFileInfo(path, 0);
-	
+			multiTrackFile = true;
 		}
-		else if(path.endsWith(".nsfe"))
+		else if(filename.endsWith(".nsfe"))
 		{
 			type = Track.TYPE_NSFE;
-			fileInfo = gme.getFileInfo(path, 0);
-			
+			multiTrackFile = true;
 		}
-		else if(path.endsWith(".spc"))
-		{
+		else if(filename.endsWith(".spc"))
 			type = Track.TYPE_SPC;
-			fileInfo = gme.getFileInfo(path, 0);
-			
-		}
-		else if(path.endsWith(".gbs"))
+		else if(filename.endsWith(".gbs"))
 		{
 			type = Track.TYPE_GBS;
-			fileInfo = gme.getFileInfo(path, 0);
-			
+			multiTrackFile = true;
 		}
-		else if(path.endsWith("vgz")|| path.endsWith(".vgm"))
-		{
+		else if(filename.endsWith("vgz")|| filename.endsWith(".vgm"))
 			type = Track.TYPE_VGM;
-			fileInfo = gme.getFileInfo(path, 0);
-			
+		else if(filename.endsWith(".ay"))
+		{
+			type = Track.TYPE_AY;
+			multiTrackFile = true;
+		}
+		else if(filename.endsWith(".hes"))
+		{
+			type = Track.TYPE_HES;
+			multiTrackFile = true;
+		}
+		else if(filename.endsWith(".kss"))
+		{
+			type = Track.TYPE_KSS;
+			multiTrackFile = true;
+		}
+		else if(filename.endsWith(".sap"))
+		{
+			type = Track.TYPE_SAP;
+			multiTrackFile = true;
 		}
 		else
 			return false;
+		
+
+		fileInfo = gme.getFileInfo(path, 0);
 
 		
 		if (fileInfo == null)
@@ -187,7 +201,7 @@ public class Library {
 		}
 		else
 		{
-			if(type == Track.TYPE_NSF || type == Track.TYPE_NSFE || type == Track.TYPE_GBS )
+			if(multiTrackFile)
 			{
 				int count = Integer.parseInt(fileInfo[0]);
 				boolean result =  true;

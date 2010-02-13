@@ -6,18 +6,15 @@ import android.content.res.Resources;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.MediaController;
 import android.widget.TabHost;
 
 public class AndroidGMETabs extends TabActivity {
 	
 	private AndroidGMEPlayerMediaController mc;
-	private AndroidGMEPlayerMediaPlayerControl mpc;
 	
 	public void onCreate(Bundle savedInstanceState) {
 	    super.onCreate(savedInstanceState);
 	    setContentView(R.layout.main);
-    	View main = findViewById(R.layout.main);
 
 	    Resources res = getResources(); // Resource object to get Drawables
 	    TabHost tabHost = getTabHost();  // The activity TabHost
@@ -38,16 +35,15 @@ public class AndroidGMETabs extends TabActivity {
 	    spec = tabHost.newTabSpec("playlist").setIndicator("Playlist",
 	                      res.getDrawable(android.R.drawable.ic_menu_agenda))
 	                  .setContent(intent);
-	    tabHost.addTab(spec);
+	    tabHost.addTab(spec);	    
+
+        mc = new AndroidGMEPlayerMediaController(this);
+        mc.setPrevNextListeners(nextTrckListener, prevTrckListener);
+        mc.setEnabled(true);
+        mc.setAnchorView(getTabHost());
 
 	    tabHost.setCurrentTab(0);	    
 
-        mc = new AndroidGMEPlayerMediaController(this);
-        mpc = new AndroidGMEPlayerMediaPlayerControl(this);
-        mc.setMediaPlayer(mpc);
-        mc.setPrevNextListeners(nextTrckListener, prevTrckListener);
-        mc.setEnabled(true);
-        mc.setAnchorView(tabHost);
 	}
     
     @Override
@@ -63,11 +59,13 @@ public class AndroidGMETabs extends TabActivity {
 	@Override
 	protected void onResume() {
 		super.onResume();
+		mc.bind();
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
+		mc.unbind();
 	}
 
 	@Override
@@ -77,7 +75,6 @@ public class AndroidGMETabs extends TabActivity {
 
 	@Override
 	protected void onDestroy() {
-		mpc.unbind();
 		super.onDestroy();
 	}
 	
@@ -86,10 +83,10 @@ public class AndroidGMETabs extends TabActivity {
 		showMediaController();
 		return super.onTouchEvent(event);
 	}
-	
+		
 	private void showMediaController()
 	{
-		if(!mc.isShowing())
+		if(mc != null && !mc.isShowing())
 		{
 			try
 			{

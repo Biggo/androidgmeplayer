@@ -7,14 +7,11 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import java.util.ArrayList;
-import java.util.List;
-
-
 
 public class AndroidGMEPlaylist extends ListActivity {
     
 	private Playlist playlist;
+	private ArrayAdapter<String> songList;
 	
 	@Override
     public void onCreate(Bundle icicle) {
@@ -35,9 +32,44 @@ public class AndroidGMEPlaylist extends ListActivity {
         }
     }
     
+    @Override
+	protected void onRestart() {
+		super.onRestart();
+	}
+
+	@Override
+	protected void onStart() {
+		super.onStart();
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		if(songList != null && playlist != null)
+		{
+			int pos = playlist.getCurrentTrackIdx();
+			setSelection(pos);
+		}
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+	}
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+	}
+    
     public void populatePlayList()
     {
-		ArrayAdapter<String> songList = new ArrayAdapter<String>(this,R.layout.song_item,playlist.getSongs());
+		songList = new ArrayAdapter<String>(this,R.layout.song_item,playlist.getSongs());
 		setListAdapter(songList);	
     }
     

@@ -11,12 +11,7 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.View;
-import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.LinearLayout;
-import android.widget.MediaController;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
@@ -49,24 +44,21 @@ public class AndroidGMEPlayer extends Activity {
     	
         Library.init(getApplicationContext());
       
-        file = (TextView)findViewById(R.layout.txtFile);
-        tracks = (TextView)findViewById(R.layout.txtTracks);
-        song = (TextView)findViewById(R.layout.txtSong);
-        game = (TextView)findViewById(R.layout.txtGame);
-        system = (TextView)findViewById(R.layout.txtSystem);
-        author = (TextView)findViewById(R.layout.txtAuthor);
-        copyright = (TextView)findViewById(R.layout.txtCopyright);
-        comment = (TextView)findViewById(R.layout.txtComment);
-        dumper = (TextView)findViewById(R.layout.txtDumper);  
+        file = (TextView)findViewById(R.id.txtFile);
+        tracks = (TextView)findViewById(R.id.txtTracks);
+        song = (TextView)findViewById(R.id.txtSong);
+        game = (TextView)findViewById(R.id.txtGame);
+        system = (TextView)findViewById(R.id.txtSystem);
+        author = (TextView)findViewById(R.id.txtAuthor);
+        copyright = (TextView)findViewById(R.id.txtCopyright);
+        comment = (TextView)findViewById(R.id.txtComment);
+        dumper = (TextView)findViewById(R.id.txtDumper);  
         
-        shuffle = (TextView)findViewById(R.layout.txtShuffle);
+        shuffle = (TextView)findViewById(R.id.txtShuffle);
         shuffle.setText(R.string.shuffle);
-        btnShuffleToggle = (ToggleButton)findViewById(R.layout.btnShuffleToggle);
+        btnShuffleToggle = (ToggleButton)findViewById(R.id.btnShuffleToggle);
         btnShuffleToggle.setOnCheckedChangeListener(toggleShuffleListener);
         btnShuffleToggle.setChecked(Library.getCurrentPlaylist().getRandomMode());
-        
-//        Button btnShowPlaylist = (Button)findViewById(R.layout.btnShowPlaylist);
-//        btnShowPlaylist.setOnClickListener(showPlaylist);        
 
         IntentFilter inFilter  = new IntentFilter();
         inFilter.addAction(ACTION_UPDATE_TRACK_INFO);        
