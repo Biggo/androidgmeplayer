@@ -8,8 +8,9 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Bundle;
 import android.os.Handler;
-import android.widget.Toast;
+import android.os.Message;
 
 import com.biggo.AndroidGMEPlayer.Track;
 
@@ -21,75 +22,109 @@ public class Library {
 	
 	private static final String PATH = "/sdcard/media/vgmusic/";
 	
+	private static Context currentContext;
+	private static Handler loadHandler;
+
 	private static boolean isInitialized = false;
 	
-	private static Context currentContext;
+	private static Thread loadingThread;
 	
-	private static final Handler toastHandler = new Handler();
-	private static final Handler messageHandler = new Handler();
+	private static String dialogMessage = "";	
 	
-	public static void init(Context context)
-	{
-		if(!isInitialized)
-		{
-			currentContext = context;			
-			
-			open();
-			if(librarySize() <= 0 )
-			{
-				library = new Playlist();
-				File basePath = new File(PATH);
-				if( basePath.exists())
-				{
-					populateLibrary(basePath);
-				}
-				
-			}
-			else
-			{
-				library = fillPlaylist(fetchAllTracks());
-			}
-			library.setType(Playlist.TYPE_ALL);
-			library.setTag("");;
-			
-			if(currentPlaylist == null)
-				currentPlaylist = library;
-			
-			isInitialized = true;
-			close();
-		}
-	}
-    
-	private static void showError(String error)
-	{
-		final String err = error;
-		
-		final Runnable toastRunner = new Runnable() { public void run() { Toast.makeText(currentContext, err, Toast.LENGTH_LONG).show();}};
-		
-		 Thread toast = new Thread() { public void run() { toastHandler.post(toastRunner); } };
+    public static final String KEY_ROWID = "_id";
+    public static final String KEY_PATH = "path";
+    public static final String KEY_FILENAME = "filename";
+    public static final String KEY_TRACKNUM = "tracknum";
+    public static final String KEY_TRACKCOUNT = "trackcount";
+    public static final String KEY_TYPE = "type";
+    public static final String KEY_SONG = "song";
+    public static final String KEY_GAME = "game";
+    public static final String KEY_SYSTEM = "system";
+    public static final String KEY_AUTHOR = "author";
+    public static final String KEY_COPYRIGHT = "copyright";
+    public static final String KEY_COMMENT = "comment";
+    public static final String KEY_DUMPER = "dumper";
 
-		 toast.start(); 
-	}
+    private static final String TAG = "Library";
+    private static DatabaseHelper mDbHelper;
+    private static SQLiteDatabase mDb;
+    
+
+    
+    /*
+     * Database creation sql statement
+     */
+    private static final String DATABASE_CREATE_LIBRARY =
+            "create table library (_id integer primary key autoincrement, "
+                    + "path varchar(1000) not null, filename varchar(100) not null, "
+                    + "tracknum integer not null, trackcount integer not null, "
+                    + "type integer null, song varchar(500) null, game varchar(500) null, "
+                    + "system varchar(500) null, author varchar(500) null, "
+                    + "copyright varchar(500) null, comment varchar(500) null, "
+                    + "dumper varchar(500) null);";
+
+    private static final String DATABASE_NAME = "vgmedia";
+    private static final String DATABASE_TABLE = "library";
+    private static final int DATABASE_VERSION = 1;   
 	
-	public static Playlist getPlaylist(int type, String tag)
+	public static void init(Context context, Handler handler)
 	{
-		if(type == Playlist.TYPE_ALL)
-			return library;
-		else
+		currentContext = context;
+		loadHandler = handler;
+		
+		open();
+		library = new Playlist();
+		if(librarySize() == 0)
 		{
-			return filterPlaylist(type, tag);
+			File basePath = new File(PATH);
+			if( basePath.exists())
+			{
+				populateLibrary(basePath);
+			}
 		}
+
+        dialogMessage = "Loading Playlist...";
+        Message msg = loadHandler.obtainMessage();
+        Bundle b = new Bundle();
+        b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
+        msg.setData(b);        
+        loadHandler.sendMessage(msg);
+        
+		library = fillPlaylist(fetchAllTracks());
+		library.setType(Playlist.TYPE_ALL);
+		library.setTag("");
+		
+		currentPlaylist = library;
+		
+		close();
+		dialogMessage = "";
+		isInitialized = true;
 	}
-	
-	public static Playlist getCurrentPlaylist()
+
+	public static void update()
 	{
-		return currentPlaylist;
-	}
-	
-	public static void setCurrentPlaylist(Playlist playlist)
-	{
-		if(!currentPlaylist.equals(playlist))
-			currentPlaylist = playlist;
+		if(isInitialized)
+		{
+			open();
+			File basePath = new File(PATH);
+			if( basePath.exists())
+			{
+				populateLibrary(basePath);
+			}
+
+	        dialogMessage = "Loading Playlist...";
+	        Message msg = loadHandler.obtainMessage();
+	        Bundle b = new Bundle();
+	        b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
+	        msg.setData(b);        
+	        loadHandler.sendMessage(msg);
+			
+			library = fillPlaylist(fetchAllTracks());
+			currentPlaylist = library;
+			close();
+			dialogMessage = "";
+		}
+		
 	}
 	
 	private static Playlist filterPlaylist(int type, String tag)
@@ -133,14 +168,15 @@ public class Library {
 		}
 		else
 		{
-				addFileToLibrary(currentFile);
+			String path = currentFile.getAbsolutePath();
+			String filename = currentFile.getName();
+			if(!trackExists(path))
+				addFileToLibrary(path, filename.toLowerCase());
 		}
 	}	
 	
-	private static boolean addFileToLibrary(File file)
+	private static boolean addFileToLibrary(String path, String filename)
 	{
-		String path = file.getAbsolutePath();
-		String filename = file.getName().toLowerCase();
 		String[] fileInfo;
 		GMEPlayerLib gme = new GMEPlayerLib();
 		int type;
@@ -196,11 +232,22 @@ public class Library {
 		if (fileInfo == null)
 		{
 			String error = gme.getLastError();
-			showError(error);			
+            dialogMessage = error;
+            Message msg = loadHandler.obtainMessage();
+            Bundle b = new Bundle();
+            b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
+            msg.setData(b);
+            loadHandler.sendMessage(msg);			
 			return false;
 		}
 		else
 		{
+            dialogMessage = "Adding " + filename;
+            Message msg = loadHandler.obtainMessage();
+            Bundle b = new Bundle();
+            b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
+            msg.setData(b);
+            loadHandler.sendMessage(msg);			
 			if(multiTrackFile)
 			{
 				int count = Integer.parseInt(fileInfo[0]);
@@ -247,84 +294,60 @@ public class Library {
 			}
 		}		
 	}
-	
-	private static Playlist fillPlaylist(Cursor result)
-	{
-		Playlist p = null;
-		if(result != null && result.getCount() > 0)
-		{
-			p = new Playlist();
-			boolean OKSoFar = true;
-			while(result.moveToNext() && OKSoFar)
-			{
-				int idxRowID = result.getColumnIndex(KEY_ROWID);
-				int rowID = result.getInt(idxRowID);
-				int idxPath = result.getColumnIndex(KEY_PATH);
-				int idxFilename = result.getColumnIndex(KEY_FILENAME);
-				int idxTrackNum = result.getColumnIndex(KEY_TRACKNUM);
-				int idxTrackCount = result.getColumnIndex(KEY_TRACKCOUNT);
-				int idxType = result.getColumnIndex(KEY_TYPE);
-				int idxSong = result.getColumnIndex(KEY_SONG);
-				int idxGame = result.getColumnIndex(KEY_GAME);
-				int idxSystem = result.getColumnIndex(KEY_SYSTEM);
-				int idxAuthor = result.getColumnIndex(KEY_AUTHOR);
-				int idxCopyright = result.getColumnIndex(KEY_COPYRIGHT);
-				int idxComment = result.getColumnIndex(KEY_COMMENT);
-				int idxDumper = result.getColumnIndex(KEY_DUMPER);
-				Track track
-				= new Track(result.getString(idxPath),
-						result.getString(idxFilename),
-						result.getInt(idxTrackNum),
-						result.getInt(idxTrackCount),
-						result.getString(idxSong),
-						result.getString(idxGame),
-						result.getString(idxSystem),
-						result.getString(idxAuthor),
-						result.getString(idxCopyright),
-						result.getString(idxComment),
-						result.getString(idxDumper), 
-						result.getInt(idxType));
-				track.setRowID(rowID);
-				OKSoFar = p.addTrack(track);
-			}
-		}
-		result.close();
-		return p;
+
+	public static void setLoadHandler(Handler loadHandler) {
+		Library.loadHandler = loadHandler;
 	}
 	
-    public static final String KEY_ROWID = "_id";
-    public static final String KEY_PATH = "path";
-    public static final String KEY_FILENAME = "filename";
-    public static final String KEY_TRACKNUM = "tracknum";
-    public static final String KEY_TRACKCOUNT = "trackcount";
-    public static final String KEY_TYPE = "type";
-    public static final String KEY_SONG = "song";
-    public static final String KEY_GAME = "game";
-    public static final String KEY_SYSTEM = "system";
-    public static final String KEY_AUTHOR = "author";
-    public static final String KEY_COPYRIGHT = "copyright";
-    public static final String KEY_COMMENT = "comment";
-    public static final String KEY_DUMPER = "dumper";
+	public static Thread getLoadingThread() {
+		return loadingThread;
+	}
 
-    private static final String TAG = "Library";
-    private static DatabaseHelper mDbHelper;
-    private static SQLiteDatabase mDb;
-    
-    /**
-     * Database creation sql statement
-     */
-    private static final String DATABASE_CREATE_LIBRARY =
-            "create table library (_id integer primary key autoincrement, "
-                    + "path varchar(1000) not null, filename varchar(100) not null, "
-                    + "tracknum integer not null, trackcount integer not null, "
-                    + "type integer null, song varchar(500) null, game varchar(500) null, "
-                    + "system varchar(500) null, author varchar(500) null, "
-                    + "copyright varchar(500) null, comment varchar(500) null, "
-                    + "dumper varchar(500) null);";
+	
+	public static String getDialogMessage() {
+		return dialogMessage;
+	}
 
-    private static final String DATABASE_NAME = "vgmedia";
-    private static final String DATABASE_TABLE = "library";
-    private static final int DATABASE_VERSION = 1;   
+	public static void setLoadingThread(Thread loadingThread) {
+		Library.loadingThread = loadingThread;
+	}
+	
+	public static boolean isLoadingThreadRunning()
+	{
+		if(loadingThread == null)
+		{
+			return false;
+		}
+		else
+		{
+			return loadingThread.isAlive();
+		}
+	}
+
+	public static boolean isInitialized() {
+		return isInitialized;
+	}
+	
+	public static Playlist getPlaylist(int type, String tag)
+	{
+		if(type == Playlist.TYPE_ALL)
+			return library;
+		else
+		{
+			return filterPlaylist(type, tag);
+		}
+	}
+	
+	public static Playlist getCurrentPlaylist()
+	{
+		return currentPlaylist;
+	}
+	
+	public static void setCurrentPlaylist(Playlist playlist)
+	{
+		if(!currentPlaylist.equals(playlist))
+			currentPlaylist = playlist;
+	}
     
     private static class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -383,6 +406,80 @@ public class Library {
         		KEY_FILENAME, KEY_TRACKNUM, KEY_TRACKCOUNT, KEY_TYPE, KEY_SONG,
         		KEY_GAME, KEY_SYSTEM, KEY_AUTHOR, KEY_COPYRIGHT, KEY_COMMENT, KEY_DUMPER}, 
         		null, null, null, null, null);
+    }
+	
+	private static Playlist fillPlaylist(Cursor result)
+	{
+		Playlist p = null;
+		if(result != null && result.getCount() > 0)
+		{
+			p = new Playlist();
+			boolean OKSoFar = true;
+			while(result.moveToNext() && OKSoFar)
+			{
+				int idxRowID = result.getColumnIndex(KEY_ROWID);
+				int rowID = result.getInt(idxRowID);
+				int idxPath = result.getColumnIndex(KEY_PATH);
+				String path = result.getString(idxPath);
+				int idxFilename = result.getColumnIndex(KEY_FILENAME);
+				String filename = result.getString(idxFilename);
+				File filePath = new File(path);
+				if( filePath.exists())
+				{
+					int idxTrackNum = result.getColumnIndex(KEY_TRACKNUM);
+					int idxTrackCount = result.getColumnIndex(KEY_TRACKCOUNT);
+					int idxType = result.getColumnIndex(KEY_TYPE);
+					int idxSong = result.getColumnIndex(KEY_SONG);
+					int idxGame = result.getColumnIndex(KEY_GAME);
+					int idxSystem = result.getColumnIndex(KEY_SYSTEM);
+					int idxAuthor = result.getColumnIndex(KEY_AUTHOR);
+					int idxCopyright = result.getColumnIndex(KEY_COPYRIGHT);
+					int idxComment = result.getColumnIndex(KEY_COMMENT);
+					int idxDumper = result.getColumnIndex(KEY_DUMPER);
+					Track track
+					= new Track(path,
+							filename,
+							result.getInt(idxTrackNum),
+							result.getInt(idxTrackCount),
+							result.getString(idxSong),
+							result.getString(idxGame),
+							result.getString(idxSystem),
+							result.getString(idxAuthor),
+							result.getString(idxCopyright),
+							result.getString(idxComment),
+							result.getString(idxDumper), 
+							result.getInt(idxType));
+					track.setRowID(rowID);
+					OKSoFar = p.addTrack(track);
+				}
+				else
+				{
+		            dialogMessage = "Removing " + filename;
+		            Message msg = loadHandler.obtainMessage();
+		            Bundle b = new Bundle();
+		            b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
+		            msg.setData(b);
+		            loadHandler.sendMessage(msg);
+		            deleteTrack(rowID);					
+				}
+			}
+		}
+		result.close();
+		return p;
+	}
+    
+    private static boolean trackExists(String path) throws SQLException {
+    	Boolean exists = false;
+    	path = path.replace("'", "''");
+        Cursor mCursor =
+                mDb.query(true, DATABASE_TABLE, new String[] {KEY_ROWID}, 
+                		KEY_PATH + "='" + path + "'", null,
+                        null, null, null, null);
+        if (mCursor != null && mCursor.getCount() > 0) {
+        	exists = true;
+        }
+        mCursor.close();
+        return exists;
     }
 
     private static Track fetchTrack(long rowId) throws SQLException {

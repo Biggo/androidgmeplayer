@@ -1,4 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen
   xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceCategory android:title="Playback Settings">
+<!--
+<ListPreference
+android:title="Sample Rate"
+android:summary="Sample rate for playback."
+android:key="PLAYER_SETTINGS_SAMPLE_RATE"
+android:defaultValue="44100"
+android:entries="@array/SampleRateEntries"
+android:entryValues="@array/SampleRateValues" /> -->
+<com.biggo.AndroidGMEPlayer.SeekBarPreference
+android:title="Tempo"
+android:summary="Tempo speed for playback. 1.0 is normal."
+android:key="PLAYER_SETTINGS_TEMPO"
+android:defaultValue="1.00"
+precision="2"
+minvalue="0.25"
+maxvalue="3.00"
+increment="0.25"
+units=""/>
+<com.biggo.AndroidGMEPlayer.SeekBarPreference
+android:title="Fade Length"
+android:summary="Seconds for fade at the end of the track."
+android:key="PLAYER_SETTINGS_FADE_LENGTH"
+android:defaultValue="2.0"
+precision="1"
+minvalue="0.0"
+maxvalue="10.0"
+increment="0.5"
+units="sec"/>
+<!--
+<com.biggo.AndroidGMEPlayer.SeekBarPreference
+android:title="Buffer"
+android:summary="Size of the buffer in milliseconds. Try increasing it a bit if you hear pops."
+android:key="PLAYER_SETTINGS_BUFFER_SIZE"
+android:defaultValue="500.0"
+precision="0"
+minvalue="100.0"
+maxvalue="1300.0"
+increment="100.0"
+units="ms"/>-->
+</PreferenceCategory>
 </PreferenceScreen>

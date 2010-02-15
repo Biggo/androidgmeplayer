@@ -3,17 +3,16 @@
       package="com.biggo.AndroidGMEPlayer"
       android:versionCode="3" android:versionName="0.4.5a">
     <application android:icon="@drawable/icon" android:label="@string/app_name">
-        <activity android:name=".AndroidGMEPlayer"
-                  android:label="@string/app_name">
-        </activity>
+		<activity android:name=".AndroidGMETabs" class=".AndroidGMETabs">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN"/>
+				<category android:name="android.intent.category.LAUNCHER"/>
+			</intent-filter>
+		</activity>
+        <activity android:name=".AndroidGMEPlayer" class=".AndroidGMEPlayer" android:label="@string/app_name" />
         <activity android:name=".AndroidGMEPlaylist" class=".AndroidGMEPlaylist" android:label="@string/app_name" />
-    <service android:name="PlayerService"></service>
-<activity android:name="AndroidGMETabs"><intent-filter><action android:name="android.intent.action.MAIN"></action>
-
-<category android:name="android.intent.category.LAUNCHER"></category>
-</intent-filter>
-</activity>
-</application>
+        <activity android:name=".AndroidGMESettings" class=".AndroidGMESettings" android:label="@string/app_name" />
+    	<service android:name="PlayerService"/>
+	</application>
     <uses-sdk android:minSdkVersion="3" />
-
 </manifest> 

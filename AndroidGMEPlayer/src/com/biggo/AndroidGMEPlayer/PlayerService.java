@@ -11,6 +11,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -24,165 +25,62 @@ import android.widget.Toast;
 
 public class PlayerService extends Service {
 	
-	private boolean isPlaying = false;
-	private boolean isLoaded = false;
+
+	//SharedPreference keys	
+	public static final String PLAYER_SETTINGS = "PLAYER_SETTINGS";
+	public static final String PLAYER_SETTINGS_SAMPLE_RATE = "PLAYER_SETTINGS_SAMPLE_RATE";
+	public static final String PLAYER_SETTINGS_BUFFER_SIZE = "PLAYER_SETTINGS_BUFFER_SIZE";
+	public static final String PLAYER_SETTINGS_FADE_LENGTH = "PLAYER_SETTINGS_FADE_LENGTH";
+	public static final String PLAYER_SETTINGS_TEMPO = "PLAYER_SETTINGS_TEMPO";
 	
-	private final String PLAYER_SETTINGS = "PLAYER_SETTINGS";
-	private final String PLAYER_SETTINGS_SAMPLE_RATE = "PLAYER_SETTINGS_SAMPLE_RATE";
-	private final String PLAYER_SETTINGS_BUFFER_SIZE = "PLAYER_SETTINGS_BUFFER_SIZE";
-	private final String PLAYER_SETTINGS_FADE_LENGTH = "PLAYER_SETTINGS_FADE_LENGTH";
-	private final String PLAYER_SETTINGS_TEMPO = "PLAYER_SETTINGS_TEMPO";
-	
+	//Intent keys
 	public final static String ACTION_NEXT_TRACK = "AndroidGMEPlayer_ACTION_NEXT_TRACK";	
 	public final static String ACTION_PREVIOUS_TRACK = "AndroidGMEPlayer_ACTION_PREVIOUS_TRACK";
 	public final static String ACTION_CHANGE_TRACK = "AndroidGMEPlayer_ACTION_CHANGE_TRACK";
 	
+	//True while player loop is executing
+	private boolean isPlaying = false;
+	//True when a file is loaded
+	private boolean isLoaded = false;
+	
+	//internal variables for playback settings
 	private float buffer; //ms
+	private int bufferSize;
 	private int sampleRate; //hz
 	private int fadeLength; //ms
 	private double tempo; //1.0 is normal
-	
+		
+	//internal variables for playback info
 	private int trackLength = 0;
 	private int trackTime = 0;
 	private int timeOffset = 0;
-		
+			
+	//the main playback thread
 	private Thread t;
+	//the wrapper for GME libraries
 	private GMEPlayerLib gme;
-	
-	private AudioTrack audio;
-	
-	final Handler toastHandler = new Handler();
 		
-	private static final int NOTIFICATION_CURRENT_TRACK = 1;	
-
-
-    public class LocalBinder extends Binder {
-    	PlayerService getService() {
-            return PlayerService.this;
-        }
-    }
+	//AudioTrack for playback
+	private AudioTrack audio;
+		
+	//Handler for toast messages
+	final Handler toastHandler = new Handler();
+			
+	//ID variable for notification
+	private static final int NOTIFICATION_CURRENT_TRACK = 1;
+	    
+	//true when listening for phone state to pause when phone rings
+	private boolean phoneStateListening = false;
+	
+	//binder for service
+	private final IBinder mBinder = new LocalBinder();
+	
+	//methods for service foreground control backwards/forwards compatibility   
+	private Method mDebug_startForeground;
+	private Method mDebug_stopForeground;
     
-   private Method mDebug_startForeground;
-   private Method mDebug_stopForeground;
-    
-   private void initCompatibility() {
-	   if(mDebug_startForeground == null)
-	   {
-	       try {
-	           mDebug_startForeground = Service.class.getMethod(
-	                   "startForeground", new Class[] { int.class, Notification.class } );
-	           /* success, this is a newer device */
-	       } catch (NoSuchMethodException nsme) {
-	           /* failure, must be older device use the no-op equivalent method*/    	    	   
-	       }
-	   }
-	   if(mDebug_stopForeground == null)
-	   {
-	       try {
-	    	   mDebug_stopForeground = Service.class.getMethod(
-	                   "stopForeground", new Class[] { boolean.class} );
-	           /* success, this is a newer device */
-	       } catch (NoSuchMethodException nsme) {
-	           /* failure, must be older device use the no-op equivalent method*/    	    	   
-	       }
-	   }
-   }
    
-   private void startForegroundWrapper(int id, Notification notification) throws IOException
-   {
-       try {
-    	   mDebug_startForeground.invoke(this, id, notification);
-       } catch (InvocationTargetException ite) {
-           /* unpack original exception when possible */
-           Throwable cause = ite.getCause();
-           if (cause instanceof IOException) {
-               throw (IOException) cause;
-           } else if (cause instanceof RuntimeException) {
-               throw (RuntimeException) cause;
-           } else if (cause instanceof Error) {
-               throw (Error) cause;
-           } else {
-               /* unexpected checked exception; wrap and re-throw */
-               throw new RuntimeException(ite);
-           }
-       } catch (IllegalAccessException ie) {
-           System.err.println("unexpected " + ie);
-       }
-   }
-   
-   private void stopForegroundWrapper(boolean removeNotification) throws IOException
-   {
-       try {
-    	   mDebug_stopForeground.invoke(this, removeNotification);
-       } catch (InvocationTargetException ite) {
-           /* unpack original exception when possible */
-           Throwable cause = ite.getCause();
-           if (cause instanceof IOException) {
-               throw (IOException) cause;
-           } else if (cause instanceof RuntimeException) {
-               throw (RuntimeException) cause;
-           } else if (cause instanceof Error) {
-               throw (Error) cause;
-           } else {
-               /* unexpected checked exception; wrap and re-throw */
-               throw new RuntimeException(ite);
-           }
-       } catch (IllegalAccessException ie) {
-           System.err.println("unexpected " + ie);
-       }
-   }
-   
-   private void enableNotification(String ticker, String title, String text)
-   {
-	   int icon = android.R.drawable.ic_media_play;
-	   long when = System.currentTimeMillis();
-	   
-	   Notification mNotification = new Notification(icon, ticker, when);
-   
-	   Context context = getApplicationContext();
-	   Intent notificationIntent = new Intent(this, AndroidGMETabs.class);
-	   PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
-	   mNotification.setLatestEventInfo(context, title, text, contentIntent);	
-	   
-	   initCompatibility();
-	   
-	   if (mDebug_startForeground != null) {
-           /* feature is supported */
-           try {
-        	   startForegroundWrapper(PlayerService.NOTIFICATION_CURRENT_TRACK , mNotification);
-           } catch (IOException ie) {
-               System.err.println("dump failed!");
-           }
-       } else {
-           /* feature not supported, use the setForeground instead */
-    	   String ns = Context.NOTIFICATION_SERVICE;
-    	   NotificationManager mNotificationManager = (NotificationManager) getSystemService(ns);
-    	   mNotificationManager.notify(PlayerService.NOTIFICATION_CURRENT_TRACK , mNotification);
-           setForeground(true);
-       }
-   }
-   
-   private void disableNotification()
-   {		   
-	   initCompatibility();
-	   
-	   if (mDebug_stopForeground != null) {
-           /* feature is supported */
-           try {
-        	   stopForegroundWrapper(true);
-           } catch (IOException ie) {
-               System.err.println("dump failed!");
-           }
-       } else {
-           /* feature not supported, use the setForeground instead */
-    	   String ns = Context.NOTIFICATION_SERVICE;
-    	   NotificationManager mNotificationManager = (NotificationManager) getSystemService(ns);
-    	   mNotificationManager.cancel(PlayerService.NOTIFICATION_CURRENT_TRACK);
-           setForeground(false);
-       }
-	   
-   }
-
+	//intent handling for playback control
     @Override
     public void onStart(Intent intent, int startId) {
     	super.onStart(intent, startId);
@@ -200,24 +98,86 @@ public class PlayerService extends Service {
     	{
     		this.changeTrack(intent.getIntExtra("TrackNumber", 0));
     	}
+    	initPreferences();
     	initPhoneStateListener();
     }    
     
-
+    //initialize preferences and phone state listener on create
     @Override
     public void onCreate() {
     	super.onCreate();
     	
-    	SharedPreferences settings = this.getSharedPreferences(PLAYER_SETTINGS, 0);
-    	setBuffer(settings.getFloat(PLAYER_SETTINGS_BUFFER_SIZE, (float) 500.0));
-    	setSampleRate(settings.getInt(PLAYER_SETTINGS_SAMPLE_RATE, 44100));
-    	setFadeLength(settings.getInt(PLAYER_SETTINGS_FADE_LENGTH, 1500));
-    	setTempo((double)settings.getFloat(PLAYER_SETTINGS_TEMPO, (float) 1.0)); 
-    	
+    	initPreferences(); 	
     	initPhoneStateListener();
     }
     
-    boolean phoneStateListening = false;
+	@Override
+    public void onDestroy() {
+		super.onDestroy();
+		stop();
+    }
+	
+
+    public class LocalBinder extends Binder {
+    	PlayerService getService() {
+            return PlayerService.this;
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mBinder;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        return true;
+    }
+    
+    private void initPreferences()
+    {    	
+    	SharedPreferences settings = this.getSharedPreferences(PlayerService.PLAYER_SETTINGS, 0);
+    	settings.registerOnSharedPreferenceChangeListener(settingsChangedListener);
+    	//setSampleRate(settings.getString(PlayerService.PLAYER_SETTINGS_SAMPLE_RATE, "44100"));
+    	setSampleRate("44100");//AudioTrack doesn't behave very well when trying to change buffer size
+    	//setBuffer(settings.getFloat(PlayerService.PLAYER_SETTINGS_BUFFER_SIZE, (float) 500.0));
+    	setBuffer(500.0f);//AudioTrack doesn't behave very well when trying to change buffer size
+    	setFadeLength(settings.getFloat(PlayerService.PLAYER_SETTINGS_FADE_LENGTH, 1500));
+    	setTempo(settings.getFloat(PlayerService.PLAYER_SETTINGS_TEMPO, (float) 1.0));
+    	settings.registerOnSharedPreferenceChangeListener(settingsChangedListener);
+    }
+	
+	private OnSharedPreferenceChangeListener settingsChangedListener = new OnSharedPreferenceChangeListener() {
+
+		@Override
+		public void onSharedPreferenceChanged(
+				SharedPreferences sharedPreferences, String key) {
+			
+			/*if(key.compareTo(PlayerService.PLAYER_SETTINGS_SAMPLE_RATE) == 0)
+			{
+		    	setSampleRate(sharedPreferences.getString(key, "44100"));
+				
+			}*/
+			/*else if(key.compareTo(PlayerService.PLAYER_SETTINGS_BUFFER_SIZE) == 0)
+			{
+		    	setBuffer(sharedPreferences.getFloat(key, (float) 500.0));
+				
+			}*/
+			if(key.compareTo(PlayerService.PLAYER_SETTINGS_FADE_LENGTH) == 0)
+			{
+		    	setFadeLength(sharedPreferences.getFloat(key, 1500));
+				
+			}
+			else if(key.compareTo(PlayerService.PLAYER_SETTINGS_TEMPO) == 0)
+			{
+		    	setTempo(sharedPreferences.getFloat(key, (float) 1.0));
+				
+			}
+			
+		}
+
+	};
+    
     
     private void initPhoneStateListener()
     {
@@ -230,7 +190,8 @@ public class PlayerService extends Service {
     }
     
     private PhoneStateListener phoneStateListener = new PhoneStateListener() {
-    	public void  onCallStateChanged  (int state, String incomingNumber)
+    	@Override
+		public void  onCallStateChanged  (int state, String incomingNumber)
     	{
     		if(state == TelephonyManager.CALL_STATE_OFFHOOK || state == TelephonyManager.CALL_STATE_RINGING)
     		{
@@ -239,80 +200,187 @@ public class PlayerService extends Service {
     	}
     };
     
-	@Override
-    public void onDestroy() {
-		super.onDestroy();
-		stop();
+    private void initCompatibility() {
+ 	   if(mDebug_startForeground == null)
+ 	   {
+ 	       try {
+ 	           mDebug_startForeground = Service.class.getMethod(
+ 	                   "startForeground", new Class[] { int.class, Notification.class } );
+ 	           /* success, this is a newer device */
+ 	       } catch (NoSuchMethodException nsme) {
+ 	           /* failure, must be older device use the no-op equivalent method*/    	    	   
+ 	       }
+ 	   }
+ 	   if(mDebug_stopForeground == null)
+ 	   {
+ 	       try {
+ 	    	   mDebug_stopForeground = Service.class.getMethod(
+ 	                   "stopForeground", new Class[] { boolean.class} );
+ 	           /* success, this is a newer device */
+ 	       } catch (NoSuchMethodException nsme) {
+ 	           /* failure, must be older device use the no-op equivalent method*/    	    	   
+ 	       }
+ 	   }
     }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return mBinder;
+    
+    private void startForegroundWrapper(int id, Notification notification) throws IOException
+    {
+        try {
+     	   mDebug_startForeground.invoke(this, id, notification);
+        } catch (InvocationTargetException ite) {
+            /* unpack original exception when possible */
+            Throwable cause = ite.getCause();
+            if (cause instanceof IOException) {
+                throw (IOException) cause;
+            } else if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            } else if (cause instanceof Error) {
+                throw (Error) cause;
+            } else {
+                /* unexpected checked exception; wrap and re-throw */
+                throw new RuntimeException(ite);
+            }
+        } catch (IllegalAccessException ie) {
+        }
     }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        return true;
+    
+    private void stopForegroundWrapper(boolean removeNotification) throws IOException
+    {
+        try {
+     	   mDebug_stopForeground.invoke(this, removeNotification);
+        } catch (InvocationTargetException ite) {
+            /* unpack original exception when possible */
+            Throwable cause = ite.getCause();
+            if (cause instanceof IOException) {
+                throw (IOException) cause;
+            } else if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            } else if (cause instanceof Error) {
+                throw (Error) cause;
+            } else {
+                /* unexpected checked exception; wrap and re-throw */
+                throw new RuntimeException(ite);
+            }
+        } catch (IllegalAccessException ie) {
+        }
     }
-
-    private final IBinder mBinder = new LocalBinder();
+    
+    private void enableNotification(String ticker, String title, String text)
+    {
+ 	   int icon = android.R.drawable.ic_media_play;
+ 	   long when = System.currentTimeMillis();
+ 	   
+ 	   Notification mNotification = new Notification(icon, ticker, when);
+    
+ 	   Context context = getApplicationContext();
+ 	   Intent notificationIntent = new Intent(this, AndroidGMETabs.class);
+ 	   PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+ 	   mNotification.setLatestEventInfo(context, title, text, contentIntent);	
+ 	   
+ 	   initCompatibility();
+ 	   
+ 	   if (mDebug_startForeground != null) {
+            /* feature is supported */
+            try {
+         	   startForegroundWrapper(PlayerService.NOTIFICATION_CURRENT_TRACK , mNotification);
+            } catch (IOException ie) {
+                System.err.println("dump failed!");
+            }
+        } else {
+            /* feature not supported, use the setForeground instead */
+     	   String ns = Context.NOTIFICATION_SERVICE;
+     	   NotificationManager mNotificationManager = (NotificationManager) getSystemService(ns);
+     	   mNotificationManager.notify(PlayerService.NOTIFICATION_CURRENT_TRACK , mNotification);
+           setForeground(true);
+        }
+    }
+    
+    private void disableNotification()
+    {		   
+ 	   initCompatibility();
+ 	   
+ 	   if (mDebug_stopForeground != null) {
+            /* feature is supported */
+            try {
+         	   stopForegroundWrapper(true);
+            } catch (IOException ie) {
+                System.err.println("dump failed!");
+            }
+        } else {
+            /* feature not supported, use the setForeground instead */
+     	   String ns = Context.NOTIFICATION_SERVICE;
+     	   NotificationManager mNotificationManager = (NotificationManager) getSystemService(ns);
+     	   mNotificationManager.cancel(PlayerService.NOTIFICATION_CURRENT_TRACK);
+           setForeground(false);
+        }
+ 	   
+    }
 
     private void init()
 	{
-		if(gme != null)
-		{
-			gme.cleanup();
-			gme = null;
-		}
-		gme = new GMEPlayerLib();			
-
-		if(audio != null)
-		{
-	        audio.flush();
-	        audio.release();
-		}
-		int bufferSize = (int)(sampleRate * (buffer / 1000.0)) * 2;	
-
-		audio = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufferSize, AudioTrack.MODE_STREAM);		
-		
-		Track track = Library.getCurrentPlaylist().getCurrentTrack();
-		if(track != null)
-		{
-		    isLoaded = gme.init(track.getPath(), track.getTrackNum(), sampleRate);
-		    if(isLoaded)
-		    {		
-		    	String[] trackinfo = gme.getTrackInfo();
+    	Playlist p = Library.getCurrentPlaylist();
+    	if(p != null)
+    	{
+			if(gme != null)
+			{
+				gme.cleanup();
+				gme = null;
+			}
+			gme = new GMEPlayerLib();			
 	
-				int length = Integer.parseInt(trackinfo[1]);
-				int intro = Integer.parseInt(trackinfo[2]);
-				int loops = Integer.parseInt(trackinfo[3]);
-				
-				if(length > 0)
-					trackLength = length;
-				else if(loops > 0)
-					trackLength = intro + loops *2;
-				else
-					trackLength = 150000;
-				
-				trackTime += fadeLength;
-				
-				trackTime = 0;
-				timeOffset = 0;
-				gme.setFade(trackLength - fadeLength, fadeLength);
-				gme.setTempo(tempo);
-		    }
-		    else
-		    {
-				String error = gme.getLastError();
-				if(error != null)
-				{
-					showError(error);
-				}	    	
-		    }
-		}
+			if(audio != null)
+			{
+		        audio.flush();
+		        audio.release();
+			}
+			bufferSize = (int)(sampleRate * (buffer / 1000.0)) * 2;			
+			int size = (AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT));
+			bufferSize = Math.max(size, bufferSize);
+			audio = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufferSize, AudioTrack.MODE_STREAM);		
+			
+			Track track = p.getCurrentTrack();
+			if(track != null)
+			{
+			    isLoaded = gme.init(track.getPath(), track.getTrackNum(), sampleRate);
+			    if(isLoaded)
+			    {		
+			    	String[] trackinfo = gme.getTrackInfo();
+		
+					int length = Integer.parseInt(trackinfo[1]);
+					int intro = Integer.parseInt(trackinfo[2]);
+					int loops = Integer.parseInt(trackinfo[3]);
+					
+					if(length > 0)
+						trackLength = length;
+					else if(loops > 0)
+						trackLength = intro + loops *2;
+					else
+						trackLength = 150000;
+					
+					trackLength += fadeLength;
+					
+					trackTime = 0;
+					timeOffset = 0;
+					gme.setFade(trackLength - fadeLength, fadeLength);
+					gme.setTempo(tempo);
+			    }
+			    else
+			    {
+					String error = gme.getLastError();
+					if(error != null)
+					{
+						showError(error);
+					}	    	
+			    }
+			}
+			else
+			{
+				showError("No Track Loaded");
+			}
+    	}
 		else
 		{
-			showError("No Track Loaded");
+			showError("No Playlist Loaded");
 		}
 	}
     
@@ -359,10 +427,9 @@ public class PlayerService extends Service {
 	}
 	
 	private void playLoop()
-	{
-		//Looper.prepare();
+	{				
+		boolean trackEnded = false;
 		long size = (AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT));
-		
         while (isPlaying)
     	{    		        		
     		short[] buf = gme.getSample(size);
@@ -388,17 +455,14 @@ public class PlayerService extends Service {
 	    			showError(error);
 	    			stop();
 	    		}
-	    		/*else if(success != size)
-	    		{
-	    			showError("Not all frames written: " + success + " of " + size);
-	    		}*/
-	    		if(gme.isTrackEnded())
+	    		trackEnded = gme.isTrackEnded();
+	    		if(trackEnded)
 	    		{
 	    			isPlaying = false;
 	    		}
     		}
     	}
-		if(gme.isTrackEnded())
+		if(trackEnded)
 		{
 	    	Library.getCurrentPlaylist().getNextTrack();
 			gme.cleanup();
@@ -457,24 +521,30 @@ public class PlayerService extends Service {
     
     public void nextTrack()
     {
-    	boolean play = isPlaying;
-    	stop();
-    	Library.getCurrentPlaylist().getNextTrack();
-    	init();
-    	if(play)
-    		play();
-    	updateTrackInfo();
+    	if(Library.getCurrentPlaylist() != null)
+    	{
+	    	boolean play = isPlaying;
+	    	stop();
+	    	Library.getCurrentPlaylist().getNextTrack();
+	    	init();
+	    	if(play)
+	    		play();
+	    	updateTrackInfo();
+    	}
     }
     
     public void previousTrack()
     {
-    	boolean play = isPlaying;
-    	Library.getCurrentPlaylist().getPreviousTrack();
-    	stop();
-    	init();
-    	if(play)
-    		play();
-    	updateTrackInfo();
+    	if(Library.getCurrentPlaylist() != null)
+    	{	    	
+	    	boolean play = isPlaying;
+	    	Library.getCurrentPlaylist().getPreviousTrack();
+	    	stop();
+	    	init();
+	    	if(play)
+	    		play();
+	    	updateTrackInfo();
+    	}
     }
 		
 	public int getTime()
@@ -549,16 +619,17 @@ public class PlayerService extends Service {
 	{
 		final String err = error;
 		
-		final Runnable toastRunner = new Runnable() { public void run() { Toast.makeText(getApplicationContext(), err, Toast.LENGTH_LONG).show();}};
+		final Runnable toastRunner = new Runnable() { public void run() { Toast.makeText(getApplicationContext(), err, Toast.LENGTH_SHORT).show();}};
 		
-		 Thread toast = new Thread() { public void run() { toastHandler.post(toastRunner); } };
+		 Thread toast = new Thread() { @Override
+		public void run() { toastHandler.post(toastRunner); } };
 
 		 toast.start(); 
 	}
 	
-    private void setSampleRate(int rate) 
+    private void setSampleRate(String rate) 
     {
-    	sampleRate = rate;
+    	sampleRate = Integer.parseInt(rate);
     	if(isLoaded)
     	{
 			int time = trackTime;
@@ -590,9 +661,13 @@ public class PlayerService extends Service {
     	}
 	}
     
-	private void setFadeLength(int fade)
+	private void setFadeLength(float fade)
     {
-    	fadeLength = fade;
+		if(fade > 0)
+	    	fadeLength = (int)fade * 1000;
+		else
+			fadeLength = 10;
+			
     	if(isLoaded)
     	{
 			int time = trackTime;

@@ -178,7 +178,7 @@ public class Track {
 		}
 		else
 		{
-			return "Track " + this.trackNum + "/" + this.trackCount + " " + this.filename;
+			return  this.filename + " Track: " + this.trackNum + "/" + this.trackCount;
 		}
 	}
 	
