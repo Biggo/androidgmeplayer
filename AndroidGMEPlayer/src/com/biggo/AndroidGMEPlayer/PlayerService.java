@@ -49,6 +49,7 @@ public class PlayerService extends Service {
 	private int sampleRate; //hz
 	private int fadeLength; //ms
 	private double tempo; //1.0 is normal
+	private boolean settingsInitialized = false;
 		
 	//internal variables for playback info
 	private int trackLength = 0;
@@ -98,17 +99,25 @@ public class PlayerService extends Service {
     	{
     		this.changeTrack(intent.getIntExtra("TrackNumber", 0));
     	}
-    	initPreferences();
-    	initPhoneStateListener();
+    	if(!settingsInitialized)
+    	{
+    		initPreferences();
+    		initPhoneStateListener();
+    		settingsInitialized = true;
+    	}
     }    
     
     //initialize preferences and phone state listener on create
     @Override
     public void onCreate() {
-    	super.onCreate();
-    	
-    	initPreferences(); 	
-    	initPhoneStateListener();
+    	super.onCreate();    	
+
+    	if(!settingsInitialized)
+    	{
+    		initPreferences();
+    		initPhoneStateListener();
+    		settingsInitialized = true;
+    	}
     }
     
 	@Override
@@ -666,7 +675,7 @@ public class PlayerService extends Service {
 		if(fade > 0)
 	    	fadeLength = (int)fade * 1000;
 		else
-			fadeLength = 10;
+			fadeLength = 100;
 			
     	if(isLoaded)
     	{
