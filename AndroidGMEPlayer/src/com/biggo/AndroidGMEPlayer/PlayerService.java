@@ -142,7 +142,7 @@ public class PlayerService extends Service {
     	setSampleRate("44100");//AudioTrack doesn't behave very well when trying to change buffer size
     	//setBuffer(settings.getFloat(PlayerService.PLAYER_SETTINGS_BUFFER_SIZE, (float) 500.0));
     	setBuffer(500.0f);//AudioTrack doesn't behave very well when trying to change buffer size
-    	setFadeLength(settings.getFloat(PlayerService.PLAYER_SETTINGS_FADE_LENGTH, 1500));
+    	setFadeLength(settings.getFloat(PlayerService.PLAYER_SETTINGS_FADE_LENGTH, 1.5f));
     	setTempo(settings.getFloat(PlayerService.PLAYER_SETTINGS_TEMPO, (float) 1.0));
     	settings.registerOnSharedPreferenceChangeListener(settingsChangedListener);
     }
@@ -165,7 +165,7 @@ public class PlayerService extends Service {
 			}*/
 			if(key.compareTo(PlayerService.PLAYER_SETTINGS_FADE_LENGTH) == 0)
 			{
-		    	setFadeLength(sharedPreferences.getFloat(key, 1500));
+		    	setFadeLength(sharedPreferences.getFloat(key, 1.5f));
 				
 			}
 			else if(key.compareTo(PlayerService.PLAYER_SETTINGS_TEMPO) == 0)
