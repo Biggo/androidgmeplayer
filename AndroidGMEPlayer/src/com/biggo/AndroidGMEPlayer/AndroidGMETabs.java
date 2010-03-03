@@ -12,6 +12,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
 import android.widget.TabHost;
 
 public class AndroidGMETabs extends TabActivity {
@@ -21,12 +22,14 @@ public class AndroidGMETabs extends TabActivity {
 	private final int MENU_UPDATE_LIBRARY = 1;	
 	static final int INIT_DIALOG = 0;
 	static final int UPDATE_DIALOG = 1;
+	private boolean progressFeatureEnabled = false;
 	
 	private ProgressDialog libraryDialog;
 	private LibraryLoadThread libraryLoadThread;
 	
 	public void onCreate(Bundle savedInstanceState) {
 	    super.onCreate(savedInstanceState);
+	    progressFeatureEnabled = this.requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
 	    setContentView(R.layout.main);
 
 	    Resources res = getResources(); // Resource object to get Drawables
@@ -76,7 +79,11 @@ public class AndroidGMETabs extends TabActivity {
 	protected void onResume() {
 		super.onResume();
 	    if(!Library.isInitialized() || Library.isLoadingThreadRunning())
-	    	showDialog(INIT_DIALOG);
+	    {
+	    	showDialog(INIT_DIALOG);        
+	    	if(progressFeatureEnabled)
+	        	setProgressBarIndeterminateVisibility(Library.isLoadingThreadRunning());
+	    }
 		mc.bind();
 	}
 
@@ -203,6 +210,8 @@ public class AndroidGMETabs extends TabActivity {
             	libraryLoadThread.mHandler = loadHandler;
             	Library.setLoadHandler(loadHandler);
             }
+            if(progressFeatureEnabled)
+            	this.setProgressBarIndeterminateVisibility(true);
             return libraryDialog;
         default:
             return null;
@@ -225,6 +234,8 @@ public class AndroidGMETabs extends TabActivity {
         	                removeDialog(INIT_DIALOG);
         	                libraryDialog = null;
                     		Intent intent = new Intent();
+                            if(progressFeatureEnabled)
+                            	setProgressBarIndeterminateVisibility(false);
                     		intent.setAction(AndroidGMEPlayer.ACTION_UPDATE_TRACK_INFO);
                     		sendBroadcast(intent);
         	                break;

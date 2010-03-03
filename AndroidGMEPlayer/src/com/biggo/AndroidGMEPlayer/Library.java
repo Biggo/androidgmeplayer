@@ -401,11 +401,11 @@ public class Library {
     }
 
     private static Cursor fetchAllTracks() {
-
+//order by game
         return mDb.query(DATABASE_TABLE, new String[] {KEY_ROWID, KEY_PATH,
         		KEY_FILENAME, KEY_TRACKNUM, KEY_TRACKCOUNT, KEY_TYPE, KEY_SONG,
         		KEY_GAME, KEY_SYSTEM, KEY_AUTHOR, KEY_COPYRIGHT, KEY_COMMENT, KEY_DUMPER}, 
-        		null, null, null, null, null);
+        		null, null, null, null, KEY_GAME);
     }
 	
 	private static Playlist fillPlaylist(Cursor result)
