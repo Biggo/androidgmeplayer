@@ -88,7 +88,6 @@ public class SeekBarPreference extends DialogPreference
     
     private OnSeekBarChangeListener seekBarListener = new OnSeekBarChangeListener() {
 
-		@Override
 		public void onProgressChanged(SeekBar seek, int progress, boolean fromUser) {
 			if(fromUser)
 			{
@@ -101,12 +100,10 @@ public class SeekBarPreference extends DialogPreference
 			}
 		}
 
-		@Override
 		public void onStartTrackingTouch(SeekBar seekBar) {
 			
 		}
 
-		@Override
 		public void onStopTrackingTouch(SeekBar seekBar) {
 			
 		}

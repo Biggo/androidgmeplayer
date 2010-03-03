@@ -410,10 +410,9 @@ public class Library {
 	
 	private static Playlist fillPlaylist(Cursor result)
 	{
-		Playlist p = null;
+		Playlist p =  new Playlist();
 		if(result != null && result.getCount() > 0)
 		{
-			p = new Playlist();
 			boolean OKSoFar = true;
 			while(result.moveToNext() && OKSoFar)
 			{

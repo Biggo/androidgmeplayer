@@ -1,5 +1,4 @@
-
-#LOCAL_SRC_FILES += gme/CopyrightLOCAL_SRC_FILES += gme/(C)LOCAL_SRC_FILES += gme/2009LOCAL_SRC_FILES += gme/TheLOCAL_SRC_FILES += gme/AndroidLOCAL_SRC_FILES += gme/OpenLOCAL_SRC_FILES += gme/SourceLOCAL_SRC_FILES += gme/Project
+# Copyright (C) 2009 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

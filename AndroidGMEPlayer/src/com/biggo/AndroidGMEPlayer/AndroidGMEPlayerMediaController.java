@@ -70,12 +70,11 @@ public class AndroidGMEPlayerMediaController extends MediaController {
 		public AndroidGMEPlayerMediaPlayerControl() {
 			super();
 		}
-		@Override
+		
 	    public int getBufferPercentage() {
 	    	return 100;
 	    }
-	    
-	    @Override
+
 	    public int getCurrentPosition() {
 	    	if(mIsBound)
 	    		return playerService.getTime();
@@ -83,7 +82,6 @@ public class AndroidGMEPlayerMediaController extends MediaController {
 	    		return 0;
 	    }
 	    
-	    @Override
 	    public int getDuration() {
 	    	if(mIsBound)
 	    		return playerService.getTrackLength();
@@ -91,7 +89,6 @@ public class AndroidGMEPlayerMediaController extends MediaController {
 	    		return 0;
 	    }
 	    
-	    @Override
 	    public boolean isPlaying() {
 	    	if(mIsBound)
 	    		return playerService.getIsPlaying();
@@ -99,19 +96,16 @@ public class AndroidGMEPlayerMediaController extends MediaController {
 	    		return false;
 	    }
 	    
-	    @Override
 	    public void pause() {
 	    	if(mIsBound)
 	    		playerService.pause();
 	    }
 	    
-	    @Override
 	    public void seekTo(int pos) {
 	    	if(mIsBound)
 	    		playerService.seekTo(pos);
 	    }
 	    
-	    @Override
 	    public void start() {
 	    	if(mIsBound)
 	    		playerService.play();

@@ -25,7 +25,6 @@ import android.widget.Toast;
 
 public class PlayerService extends Service {
 	
-
 	//SharedPreference keys	
 	public static final String PLAYER_SETTINGS = "PLAYER_SETTINGS";
 	public static final String PLAYER_SETTINGS_SAMPLE_RATE = "PLAYER_SETTINGS_SAMPLE_RATE";
@@ -158,7 +157,6 @@ public class PlayerService extends Service {
 	
 	private OnSharedPreferenceChangeListener settingsChangedListener = new OnSharedPreferenceChangeListener() {
 
-		@Override
 		public void onSharedPreferenceChanged(
 				SharedPreferences sharedPreferences, String key) {
 			
@@ -521,20 +519,25 @@ public class PlayerService extends Service {
 	
     public void changeTrack(int idx)
     {
-    	if(Library.getCurrentPlaylist().setCurrentTrack(idx))
+    	Playlist p = Library.getCurrentPlaylist();
+    	if (idx >= 0 && idx < p.getSize())
     	{
-    		stop();
-    		play();
+			stop();
+    		if(p.setCurrentTrack(idx))
+    		{
+    			play();
+    		}
     	}
     }
     
     public void nextTrack()
     {
-    	if(Library.getCurrentPlaylist() != null)
+    	Playlist p = Library.getCurrentPlaylist();
+    	if(p != null)
     	{
 	    	boolean play = isPlaying;
 	    	stop();
-	    	Library.getCurrentPlaylist().getNextTrack();
+	    	p.getNextTrack();
 	    	init();
 	    	if(play)
 	    		play();
@@ -544,10 +547,11 @@ public class PlayerService extends Service {
     
     public void previousTrack()
     {
-    	if(Library.getCurrentPlaylist() != null)
+    	Playlist p = Library.getCurrentPlaylist();
+    	if(p != null)
     	{	    	
 	    	boolean play = isPlaying;
-	    	Library.getCurrentPlaylist().getPreviousTrack();
+	    	p.getPreviousTrack();
 	    	stop();
 	    	init();
 	    	if(play)

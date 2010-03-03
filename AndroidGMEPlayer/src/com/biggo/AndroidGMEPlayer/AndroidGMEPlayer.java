@@ -36,6 +36,7 @@ public class AndroidGMEPlayer extends Activity {
     public void onCreate(Bundle savedInstanceState) {
     	super.onCreate(savedInstanceState);
     	setContentView(R.layout.player);    
+    	
      
         file = (TextView)findViewById(R.id.txtFile);
         tracks = (TextView)findViewById(R.id.txtTracks);
@@ -72,6 +73,7 @@ public class AndroidGMEPlayer extends Activity {
 	protected void onResume() {
 		super.onResume();
         updateTrackInfo();
+        
 	}
 
 	@Override
@@ -102,6 +104,7 @@ public class AndroidGMEPlayer extends Activity {
 		Playlist current = Library.getCurrentPlaylist();
 		if(current != null)
 		{
+			btnShuffleToggle.setChecked(current.getRandomMode());
 			Track track = current.getCurrentTrack();
 			if(track != null)
 			{
