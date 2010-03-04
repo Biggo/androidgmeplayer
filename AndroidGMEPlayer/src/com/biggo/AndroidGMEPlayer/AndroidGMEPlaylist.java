@@ -19,7 +19,6 @@ public class AndroidGMEPlaylist extends ListActivity {
         	super.onCreate(icicle);
         	setContentView(R.layout.songlist);        	
         	listView = (ListView)findViewById(android.R.id.list);
-        	initPlaylist();
         
         } catch (NullPointerException e) {
         }
@@ -38,16 +37,11 @@ public class AndroidGMEPlaylist extends ListActivity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if(songList != null && playlist != null)
+		if( (songList == null || playlist == null || playlist != Library.getCurrentPlaylist()))
 		{
-			int pos = playlist.getCurrentTrackIdx();
-    		int y = listView.getHeight();
-    		listView.setSelectionFromTop(pos, y / 2);
-		}
-		else
-		{        	
 			initPlaylist();
 		}
+		setSelection();
 	}
 
 	@Override
@@ -70,14 +64,18 @@ public class AndroidGMEPlaylist extends ListActivity {
     	playlist = Library.getCurrentPlaylist();  
     	if(playlist != null)
     	{
-    		int pos = playlist.getCurrentTrackIdx();
     		populatePlayList();
-    		int y = listView.getHeight();
-    		listView.setSelectionFromTop(pos, y / 2);
     	}
 		
 	}
-    public void populatePlayList()
+	private void setSelection()
+	{
+		int pos = playlist.getCurrentTrackIdx();
+		int y = listView.getHeight();
+		listView.setSelectionFromTop(pos, y / 2);
+		
+	}
+    private void populatePlayList()
     {
     	songList = new ArrayAdapter<String>(this,R.layout.song_item,playlist.getSongs());
     	setListAdapter(songList);
