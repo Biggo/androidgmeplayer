@@ -15,40 +15,43 @@ public class Track {
 	public static final int TYPE_VGM = 10; 
 	public static final int TYPE_NSFE = 11; 
 	
-	private String path;
-	private String filename;
-	private int trackNum;
-	private int trackCount;
-	private String song;
-	private String game;
-	private String system;
-	private String author;
-	private String copyright;
-	private String comment;
-	private String dumper;
-	private int type;
-	private int rowID;	
+	private String path = "";
+	private String filename = "";
+	private int trackNum = -1;
+	private int trackCount = -1;
+	private String song = "";
+	private String game = "";
+	private String system = "";
+	private String author = "";
+	private String copyright = "";
+	private String comment = "";
+	private String dumper = "";
+	private int type = -1;
+	private int rowID = -1;	
+	private int tracklength = -1;
+	private int introlength = -1;
+	private int looplength = -1;
 
-	public Track(String path, String filename,int trackNum, int trackCount, String song, String game, String system, String author, String copyright, String comment, String dumper, int type)
-	{
-		this.path = path;
-		this.filename = filename;
-		this.trackNum = trackNum;
-		this.trackCount = trackCount;
-		this.song = song;
-		this.game = game;
-		this.system = system;
-		this.author = author;
-		this.copyright = copyright;
-		this.comment = comment;
-		this.dumper = dumper;		
-		this.type = type;
-	}
-	
-	public Track()
-	{
-		this("", "", 0, 0, "", "", "", "", "", "", "", Track.TYPE_UNKNOWN);
-	}
+//	public Track(String path, String filename, int trackNum, int trackCount, String song, String game, String system, String author, String copyright, String comment, String dumper, int type)
+//	{
+//		this.path = path;
+//		this.filename = filename;
+//		this.trackNum = trackNum;
+//		this.trackCount = trackCount;
+//		this.song = song;
+//		this.game = game;
+//		this.system = system;
+//		this.author = author;
+//		this.copyright = copyright;
+//		this.comment = comment;
+//		this.dumper = dumper;		
+//		this.type = type;
+//	}
+//	
+//	public Track()
+//	{
+//		this("", "", 0, 0, "", "", "", "", "", "", "", Track.TYPE_UNKNOWN);
+//	}
 	
 	public String getPath()
 	{
@@ -189,5 +192,31 @@ public class Track {
 	public void setRowID(int rowID) {
 		this.rowID = rowID;
 	}
+
+	public int getTrackLength() {
+		return tracklength;
+	}
+
+	public void setTrackLength(int tracklength) {
+		this.tracklength = tracklength;
+	}
+
+	public int getIntroLength() {
+		return introlength;
+	}
+
+	public void setIntroLength(int introlength) {
+		this.introlength = introlength;
+	}
+
+	public int getLoopLength() {
+		return looplength;
+	}
+
+	public void setLoopLength(int looplength) {
+		this.looplength = looplength;
+	}
+	
+	
 
 }

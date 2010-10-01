@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import com.biggo.AndroidGMEPlayer.PlayerLibs.*;
+
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -58,7 +60,7 @@ public class PlayerService extends Service {
 	//the main playback thread
 	private Thread t;
 	//the wrapper for GME libraries
-	private GMEPlayerLib gme;
+	private IPlayerLib player;
 		
 	//AudioTrack for playback
 	private AudioTrack audio;
@@ -328,12 +330,11 @@ public class PlayerService extends Service {
     	Playlist p = Library.getCurrentPlaylist();
     	if(p != null)
     	{
-			if(gme != null)
+			if(player != null)
 			{
-				gme.cleanup();
-				gme = null;
-			}
-			gme = new GMEPlayerLib();			
+				player.cleanup();
+				player = null;
+			}			
 	
 			if(audio != null)
 			{
@@ -348,37 +349,43 @@ public class PlayerService extends Service {
 			Track track = p.getCurrentTrack();
 			if(track != null)
 			{
-			    isLoaded = gme.init(track.getPath(), track.getTrackNum(), sampleRate);
-			    if(isLoaded)
-			    {		
-			    	String[] trackinfo = gme.getTrackInfo();
-		
-					int length = Integer.parseInt(trackinfo[1]);
-					int intro = Integer.parseInt(trackinfo[2]);
-					int loops = Integer.parseInt(trackinfo[3]);
-					
-					if(length > 0)
-						trackLength = length;
-					else if(loops > 0)
-						trackLength = intro + loops *2;
-					else
-						trackLength = 150000;
-					
-					trackLength += fadeLength;
-					
-					trackTime = 0;
-					timeOffset = 0;
-					gme.setFade(trackLength - fadeLength, fadeLength);
-					gme.setTempo(tempo);
-			    }
-			    else
-			    {
-					String error = gme.getLastError();
-					if(error != null)
-					{
-						showError(error);
-					}	    	
-			    }
+				player = PlayerLibFactory.getPlayerLib(track.getType());
+				if(player != null)
+				{
+				    isLoaded = player.init(track.getPath(), track.getTrackNum(), sampleRate);
+				    if(isLoaded)
+				    {		
+						int length = track.getTrackLength();
+						int intro = track.getIntroLength();
+						int loops = track.getLoopLength();
+						
+						if(length > 0)
+							trackLength = length;
+						else if(loops > 0)
+							trackLength = intro + loops *2;
+						else
+							trackLength = 150000;
+						
+						trackLength += fadeLength;
+						
+						trackTime = 0;
+						timeOffset = 0;
+						player.setFade(trackLength - fadeLength, fadeLength);
+						player.setTempo(tempo);
+				    }
+				    else
+				    {
+						String error = player.getLastError();
+						if(error != null)
+						{
+							showError(error);
+						}	    	
+				    }
+				}
+				else
+				{
+					showError("Player module not found");					
+				}
 			}
 			else
 			{
@@ -439,8 +446,8 @@ public class PlayerService extends Service {
 		long size = (AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT));
         while (isPlaying)
     	{    		        		
-    		short[] buf = gme.getSample(size);
-    		String err = gme.getLastError();
+    		short[] buf = player.getSample(size);
+    		String err = player.getLastError();
     		if(err != null)
     		{
     			showError("Failed to get sample: " + err);
@@ -462,7 +469,7 @@ public class PlayerService extends Service {
 	    			showError(error);
 	    			stop();
 	    		}
-	    		trackEnded = gme.isTrackEnded();
+	    		trackEnded = player.isTrackEnded();
 	    		if(trackEnded)
 	    		{
 	    			isPlaying = false;
@@ -472,7 +479,7 @@ public class PlayerService extends Service {
 		if(trackEnded)
 		{
 	    	Library.getCurrentPlaylist().getNextTrack();
-			gme.cleanup();
+			player.cleanup();
 			audio.stop();
 			audio.flush();
 			isLoaded = false;
@@ -488,7 +495,7 @@ public class PlayerService extends Service {
 			{
 				pause();			
 			}
-			gme.cleanup();
+			player.cleanup();
 			audio.stop();
 			audio.flush();
 			isLoaded = false;
@@ -571,7 +578,7 @@ public class PlayerService extends Service {
 			}
 			else
 			{
-				trackTime = (int)gme.getTime();
+				trackTime = (int)player.getTime();
 				return trackTime;
 			}
 		}
@@ -611,12 +618,12 @@ public class PlayerService extends Service {
 				int sec = n / 1000;
 				n -= sec * 1000;
 				n = (sec * sampleRate + n * sampleRate / 1000) * 2;
-				gme.skip(n);
+				player.skip(n);
 			}
 			else
 			{				
-				gme.seek(pos);
-				gme.setFade(trackLength - fadeLength, fadeLength);				
+				player.seek(pos);
+				player.setFade(trackLength - fadeLength, fadeLength);				
 			}
 			if (playTrack)
 				play();
@@ -700,7 +707,7 @@ public class PlayerService extends Service {
     	this.tempo = tempo;
     	if(isLoaded)
     	{
-			gme.setTempo(tempo);	
+			player.setTempo(tempo);	
     	}	
 		
 	}

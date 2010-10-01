@@ -1,8 +1,9 @@
 package com.biggo.AndroidGMEPlayer;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
+
+import android.database.Cursor;
 
 public class Playlist {	
 	
@@ -11,81 +12,32 @@ public static final int TYPE_GAME = 1;
 public static final int TYPE_SYSTEM = 2;
 public static final int TYPE_PLAYLIST = 3;
 	
-private ArrayList<Track> list;
+private Cursor list;
 private boolean random;
 private ArrayList<Integer> randomOrder;
 private ArrayList<Integer> availablePicks;
-private ArrayList<String> songs;
-private int currentTrack;
+private int currentIdx;
+private Track currentTrack;
 private int randIdx;
 private int size;
 private Random rand;
 private int type;
 private String tag;
 
-	public Playlist()
+public Playlist(Cursor result)
 	{
-		list = new ArrayList<Track>();
-		songs = new ArrayList<String>();
+		list = result;
+		list.moveToLast();
+		list.getColumnIndex(Library.KEY_ROWID);
 		random = false;
 		randomOrder = new ArrayList<Integer>();
 		availablePicks = new ArrayList<Integer>();
-		currentTrack = 0;
 		randIdx = 0;
-		size = 0;
+		size = list.getCount();
 		rand = new Random();
 		type = -1;
 		tag = "";
-	}
-	
-	public Track getTrack(int idx)
-	{
-		if(idx >= 0 && idx < size)
-			return list.get(idx);
-		else
-			return null;		
-	}
-	
-	public boolean addTrack(Track track)
-	{
-		if(list.add(track) && songs.add(track.toString()))
-		{
-			randomOrder.add(Integer.valueOf(-1));
-			availablePicks.add(Integer.valueOf(size));
-			size++;
-			return true;
-		}
-		else
-		{
-			return false;
-		}		
-	}
-	
-	public boolean removeTrack(int idx)
-	{
-		if(idx > 0 && idx < size)
-		{
-			if(list.remove(idx) != null && songs.remove(idx) != null)
-			{
-				int randPos = randomOrder.indexOf(Integer.valueOf(idx));
-				if(randPos != -1 )
-					randomOrder.remove(randPos);
-				else
-					randomOrder.remove(randomOrder.size() - 1);	
-				
-				int available = availablePicks.indexOf(Integer.valueOf(idx));
-				if (available != -1)
-				{
-					availablePicks.remove(available);
-					randIdx--;
-				}
-				size--;
-				if(idx == currentTrack)
-					getPreviousTrack();
-				return true;
-			}
-		}
-		return false;		
+		this.setCurrentTrack(0);
 	}
 	
 	public Track getNextTrack()
@@ -100,14 +52,14 @@ private String tag;
 					randIdx++;
 					if(randIdx < randomOrder.size())
 					{
-						currentTrack = randomOrder.get(randIdx);
+						currentIdx = randomOrder.get(randIdx);
 					}
 					else
 					{
 						int availableSize = availablePicks.size();
 						int pickIdx = rand.nextInt(availableSize);
-						currentTrack = availablePicks.get(pickIdx);
-						randomOrder.add(currentTrack);
+						currentIdx = availablePicks.get(pickIdx);
+						randomOrder.add(currentIdx);
 						availablePicks.remove(pickIdx);						
 					}
 				}
@@ -116,16 +68,17 @@ private String tag;
 					randIdx++;
 		    		if(randIdx >= randSize)
 		    			randIdx = 0;	
-					currentTrack = randomOrder.get(randIdx);				
+					currentIdx = randomOrder.get(randIdx);				
 				}
 			}
 			else
 			{
-				currentTrack++;
-	    		if(currentTrack >= size)
-	    			currentTrack = 0;
+				currentIdx++;
+	    		if(currentIdx >= size)
+	    			currentIdx = 0;
 			}
-			return list.get(currentTrack);
+			this.setCurrentTrack(currentIdx);
+			return currentTrack;
 		}
 		else
 			return null;
@@ -144,14 +97,14 @@ private String tag;
 					randIdx--;
 					if(randIdx >= 0)
 					{
-						currentTrack = randomOrder.get(randIdx);
+						currentIdx = randomOrder.get(randIdx);
 					}
 					else
 					{
 						int availableSize = availablePicks.size();
 						int pickIdx = rand.nextInt(availableSize);
-						currentTrack = availablePicks.get(pickIdx);
-						randomOrder.add(currentTrack);
+						currentIdx = availablePicks.get(pickIdx);
+						randomOrder.add(currentIdx);
 						randIdx = randomOrder.size() - 1;
 						availablePicks.remove(pickIdx);						
 					}
@@ -161,16 +114,17 @@ private String tag;
 					randIdx--;
 		    		if(randIdx < 0)
 		    			randIdx = randSize;	
-					currentTrack = randomOrder.get(randIdx);				
+					currentIdx = randomOrder.get(randIdx);				
 				}
 			}
 			else
 			{
-        		currentTrack--;
-        		if(currentTrack < 0)
-        			currentTrack = size - 1;
+        		currentIdx--;
+        		if(currentIdx < 0)
+        			currentIdx = size - 1;
 			}
-			return list.get(currentTrack);
+    		this.setCurrentTrack(currentIdx);
+			return currentTrack;
 		}
 		else
 			return null;		
@@ -179,21 +133,23 @@ private String tag;
 	public Track getCurrentTrack()
 	{
 		if(size > 0)
-			return list.get(currentTrack);
+			return currentTrack;
 		else
 			return null;				
 	}
 	
 	public int getCurrentTrackIdx()
 	{
-		return currentTrack;
+		return currentIdx;
 	}
 	
 	public boolean setCurrentTrack(int idx)
 	{
-		if(idx > 0 && idx < size)
+		if(idx >= 0 && idx < size)
 		{
-			currentTrack = idx;
+			currentIdx = idx;
+			list.moveToPosition(idx);
+			currentTrack = Library.getTrack(list);
 			return true;
 		}
 		return false;
@@ -201,12 +157,12 @@ private String tag;
 	
 	public int getSize()
 	{
-		return list.size();
+		return size;
 	}
 	
-	public List<String> getSongs()
+	public Cursor getSongs()
 	{
-		return songs;
+		return list;
 	}
 	
 	public boolean getRandomMode()
@@ -252,8 +208,7 @@ private String tag;
 		if(o instanceof Playlist)
 		{
 			Playlist other = (Playlist)o;
-			CharSequence tagSeq = tag.subSequence(0, tag.length());
-			return other.tag.contentEquals(tagSeq) && other.type == type;
+			return list.equals((Object)other.getSongs());
 		}
 		else
 		{

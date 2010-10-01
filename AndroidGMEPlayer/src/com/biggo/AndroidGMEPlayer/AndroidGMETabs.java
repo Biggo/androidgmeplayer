@@ -19,7 +19,8 @@ public class AndroidGMETabs extends TabActivity {
 	
 	private AndroidGMEPlayerMediaController mc;
 	private final int MENU_SETTINGS = 0;	
-	private final int MENU_UPDATE_LIBRARY = 1;	
+	private final int MENU_OPEN_LIBRARY = 1;
+	private final int MENU_UPDATE_LIBRARY = 2;	
 	static final int INIT_DIALOG = 0;
 	static final int UPDATE_DIALOG = 1;
 	private boolean progressFeatureEnabled = false;
@@ -39,7 +40,6 @@ public class AndroidGMETabs extends TabActivity {
 
 	    // Create an Intent to launch an Activity for the tab (to be reused)
 	    intent = new Intent().setClass(this, AndroidGMEPlayer.class);
-
 	    // Initialize a TabSpec for each tab and add it to the TabHost
 	    spec = tabHost.newTabSpec("player").setIndicator("Player",
 	                      res.getDrawable(android.R.drawable.ic_media_play))
@@ -95,6 +95,7 @@ public class AndroidGMETabs extends TabActivity {
 			removeDialog(INIT_DIALOG);
         	libraryDialog = null;
 		}
+		mc.hide();
 		mc.unbind();
 	}
 
@@ -118,6 +119,7 @@ public class AndroidGMETabs extends TabActivity {
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
 	    menu.add(0, MENU_SETTINGS, 0, "Settings").setIcon(android.R.drawable.ic_menu_preferences);
+	    menu.add(0, MENU_OPEN_LIBRARY, 0, "Library").setIcon(android.R.drawable.ic_menu_agenda);
 	    menu.add(0, MENU_UPDATE_LIBRARY, 0, "Update Library").setIcon(android.R.drawable.ic_menu_agenda);
 	    return true;
 	}
@@ -127,6 +129,10 @@ public class AndroidGMETabs extends TabActivity {
 	    case MENU_SETTINGS:
 	    	Intent settingsActivity = new Intent(this, AndroidGMESettings.class);
 	    	startActivity(settingsActivity);
+	        return true;
+	    case MENU_OPEN_LIBRARY:
+	    	Intent libraryActivity = new Intent(this, AndroidGMELibrary.class);
+	    	startActivity(libraryActivity);
 	        return true;
 	    case MENU_UPDATE_LIBRARY:
 	        showDialog(INIT_DIALOG);

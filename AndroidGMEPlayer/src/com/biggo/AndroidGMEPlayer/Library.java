@@ -1,7 +1,6 @@
 package com.biggo.AndroidGMEPlayer;
 
 import java.io.File;
-
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -13,6 +12,8 @@ import android.os.Handler;
 import android.os.Message;
 
 import com.biggo.AndroidGMEPlayer.Track;
+import com.biggo.AndroidGMEPlayer.PlayerLibs.ITrackInfo;
+import com.biggo.AndroidGMEPlayer.PlayerLibs.TrackInfoFactory;
 
 public class Library {
 	
@@ -44,6 +45,9 @@ public class Library {
     public static final String KEY_COPYRIGHT = "copyright";
     public static final String KEY_COMMENT = "comment";
     public static final String KEY_DUMPER = "dumper";
+    public static final String KEY_TRACKLENGTH = "tracklength";
+    public static final String KEY_INTROLENGTH = "introlength";
+    public static final String KEY_LOOPLENGTH = "looplength";
 
     private static final String TAG = "Library";
     private static DatabaseHelper mDbHelper;
@@ -54,26 +58,51 @@ public class Library {
     /*
      * Database creation sql statement
      */
-    private static final String DATABASE_CREATE_LIBRARY =
-            "create table library (_id integer primary key autoincrement, "
-                    + "path varchar(1000) not null, filename varchar(100) not null, "
-                    + "tracknum integer not null, trackcount integer not null, "
-                    + "type integer null, song varchar(500) null, game varchar(500) null, "
-                    + "system varchar(500) null, author varchar(500) null, "
-                    + "copyright varchar(500) null, comment varchar(500) null, "
-                    + "dumper varchar(500) null);";
-
     private static final String DATABASE_NAME = "vgmedia";
-    private static final String DATABASE_TABLE = "library";
-    private static final int DATABASE_VERSION = 1;   
+    
+    private static final String DATABASE_TABLE_TRACKS = "tracks";
+    private static final String DATABASE_CREATE_TRACKS =
+            "create table tracks (_id integer primary key autoincrement, "
+                    + "path varchar(1000) not null, " 
+                    + "filename varchar(100) not null, "
+                    + "tracknum integer not null, " 
+                    + "trackcount integer not null, "
+                    + "type integer null, " 
+                    + "song varchar(500) null, " 
+                    + "game varchar(500) null, "
+                    + "system varchar(500) null, " 
+                    + "author varchar(500) null, "
+                    + "copyright varchar(500) null, " 
+                    + "comment varchar(500) null, "
+                    + "dumper varchar(500) null, " 
+                    + "tracklength int null, "
+                    + "introlength int null, " 
+                    + "looplength int null); "
+    				+ "create index if not exists tracks_index on tracks(song, game, system);";
+
+
+    private static final String DATABASE_TABLE_SYSTEMS = "systems";
+    private static final String DATABASE_CREATE_SYSTEMS =
+    		"create table systems (_id integer primary key autoincrement, "
+    				+ "system varchar(500) unique);" 
+    				+ "create index if not exists systems_index on systems(system);"
+   					+ "Insert into systems(system) values('UNKNOWN')";
+    
+    private static final String DATABASE_TABLE_GAMES = "games";
+    private static final String DATABASE_CREATE_GAMES =
+		"create table games (_id integer primary key autoincrement, "
+					+ "game varchar(500) unique,"
+                    + "system varchar(500) null);" 
+    				+ "create index if not exists games_index on games(game);"
+					+ "Insert into games(game) values('UNKNOWN')";	
+    
+    private static final int DATABASE_VERSION = 5;   
 	
 	public static void init(Context context, Handler handler)
 	{
 		currentContext = context;
 		loadHandler = handler;
-		
 		open();
-		library = new Playlist();
 		if(librarySize() == 0)
 		{
 			File basePath = new File(PATH);
@@ -90,13 +119,13 @@ public class Library {
         msg.setData(b);        
         loadHandler.sendMessage(msg);
         
-		library = fillPlaylist(fetchAllTracks());
+        Cursor result = fetchTracks(null, null);
+		library = new Playlist(result);
 		library.setType(Playlist.TYPE_ALL);
 		library.setTag("");
 		
 		currentPlaylist = library;
 		
-		close();
 		dialogMessage = "";
 		isInitialized = true;
 	}
@@ -105,7 +134,6 @@ public class Library {
 	{
 		if(isInitialized)
 		{
-			open();
 			File basePath = new File(PATH);
 			if( basePath.exists())
 			{
@@ -119,9 +147,9 @@ public class Library {
 	        msg.setData(b);        
 	        loadHandler.sendMessage(msg);
 			
-			library = fillPlaylist(fetchAllTracks());
+	        Cursor result = fetchTracks(null, null);
+			library = new Playlist(result);
 			currentPlaylist = library;
-			close();
 			dialogMessage = "";
 		}
 		
@@ -129,33 +157,24 @@ public class Library {
 	
 	private static Playlist filterPlaylist(int type, String tag)
 	{
-		Playlist playlist = new Playlist();
-		CharSequence tagSeq = tag.subSequence(0, tag.length());
-		
-		for(int i = 0; i < library.getSize(); i++)
+		return new Playlist(fetchTracks(selectionFromType(type) , new String[] {tag}));
+	}
+	
+	private static String selectionFromType(int type)
+	{
+		String selection = "";
+		switch(type)
 		{
-			Track track = library.getTrack(i);
-			switch(type)
-			{
-				case Playlist.TYPE_GAME: 
-					String game = track.getGame();
-					if(game.contains(tagSeq))
-					{
-						playlist.addTrack(track);								
-					}
-					break;
-				case Playlist.TYPE_SYSTEM:
-					String system = track.getSystem();
-					if(system.contains(tagSeq))
-					{
-						playlist.addTrack(track);								
-					}
-					break;
-				case Playlist.TYPE_PLAYLIST:
-					break;
-			}
+			case Playlist.TYPE_GAME:
+				selection = KEY_GAME + " = ?";
+				break;
+			case Playlist.TYPE_SYSTEM:
+				selection = KEY_SYSTEM + " = ?";
+				break;
+			case Playlist.TYPE_PLAYLIST:
+				break;
 		}
-		return playlist;
+		return selection;
 	}
 
 	private static void populateLibrary(File currentFile)
@@ -177,61 +196,11 @@ public class Library {
 	
 	private static boolean addFileToLibrary(String path, String filename)
 	{
-		String[] fileInfo;
-		GMEPlayerLib gme = new GMEPlayerLib();
-		int type;
-		
-		boolean multiTrackFile = false;
-		
-		if(filename.endsWith(".nsf"))
-		{
-			type = Track.TYPE_NSF;
-			multiTrackFile = true;
-		}
-		else if(filename.endsWith(".nsfe"))
-		{
-			type = Track.TYPE_NSFE;
-			multiTrackFile = true;
-		}
-		else if(filename.endsWith(".spc"))
-			type = Track.TYPE_SPC;
-		else if(filename.endsWith(".gbs"))
-		{
-			type = Track.TYPE_GBS;
-			multiTrackFile = true;
-		}
-		else if(filename.endsWith("vgz")|| filename.endsWith(".vgm"))
-			type = Track.TYPE_VGM;
-		else if(filename.endsWith(".ay"))
-		{
-			type = Track.TYPE_AY;
-			multiTrackFile = true;
-		}
-		else if(filename.endsWith(".hes"))
-		{
-			type = Track.TYPE_HES;
-			multiTrackFile = true;
-		}
-		else if(filename.endsWith(".kss"))
-		{
-			type = Track.TYPE_KSS;
-			multiTrackFile = true;
-		}
-		else if(filename.endsWith(".sap"))
-		{
-			type = Track.TYPE_SAP;
-			multiTrackFile = true;
-		}
-		else
-			return false;
-		
-
-		fileInfo = gme.getFileInfo(path, 0);
-
+		ITrackInfo fileInfo = TrackInfoFactory.getTrackInfo(path,filename);
 		
 		if (fileInfo == null)
 		{
-			String error = gme.getLastError();
+			String error = "Invalid file format";
             dialogMessage = error;
             Message msg = loadHandler.obtainMessage();
             Bundle b = new Bundle();
@@ -247,51 +216,31 @@ public class Library {
             Bundle b = new Bundle();
             b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
             msg.setData(b);
-            loadHandler.sendMessage(msg);			
-			if(multiTrackFile)
-			{
-				int count = Integer.parseInt(fileInfo[0]);
-				boolean result =  true;
-				for(int i = 0; i < count; i++)
-				{
-					fileInfo = gme.getFileInfo(path, i);
-					Track track = new Track(path, 
-							filename, 
-							i, 
-							count, 
-							fileInfo[4], 
-							fileInfo[5], 
-							fileInfo[6], 
-							fileInfo[7], 
-							fileInfo[8], 
-							fileInfo[9], 
-							fileInfo[10], 
-							type);
-					int rowID = (int) saveTrack(track);
-					track.setRowID(rowID);
-					result = result && library.addTrack(track);
-					
-				}
-				return result;				
+            loadHandler.sendMessage(msg);
+            Track track = fileInfo.getTrack();
+        	boolean result =  track != null;
+        	if(result)
+        	{
+        		String game = track.getGame();
+        		String system = track.getSystem();
+        		if(!systemExists(system))
+        		{
+        			saveSystem(system);
+        		}
+        		
+        		if(!gameExists(game))
+        		{
+        			saveGame(game, system);
+        		}
+        	}
+            while(track != null)
+            {
+                int rowID = (int) saveTrack(track);
+                track.setRowID(rowID);
+            	result = result && rowID != -1; //&& library.addTrack(track);
+            	track = fileInfo.getTrack();
 			}
-			else
-			{
-				Track track = new Track(path, 
-						filename, 
-						0, 
-						1, 
-						fileInfo[4], 
-						fileInfo[5], 
-						fileInfo[6], 
-						fileInfo[7], 
-						fileInfo[8], 
-						fileInfo[9], 
-						fileInfo[10], 
-						type);
-				int rowID = (int) saveTrack(track);
-				track.setRowID(rowID);
-				return library.addTrack(track);				
-			}
+			return result;
 		}		
 	}
 
@@ -328,6 +277,34 @@ public class Library {
 		return isInitialized;
 	}
 	
+	public static Cursor getTags(int type, String filterType, String filter)
+	{
+		String col = "";
+		String selection = null;
+		String[] selectionArgs = null;
+		Cursor list = null;
+		
+		if(type == Playlist.TYPE_GAME)
+		{
+			list = fetchGames(filter);
+		}
+		else if(type == Playlist.TYPE_SYSTEM)
+		{
+			list = fetchSystems();
+		}
+		else
+		{	
+			if(filterType != null)
+			{
+				selection = filterType + " = ?";
+				selectionArgs = new String[] {filter};
+			}
+		
+			list = fetchColumn(col, selection, selectionArgs);
+		}
+		return list;
+	}
+		
 	public static Playlist getPlaylist(int type, String tag)
 	{
 		if(type == Playlist.TYPE_ALL)
@@ -358,12 +335,19 @@ public class Library {
         @Override
         public void onCreate(SQLiteDatabase db) {
 
-            db.execSQL(DATABASE_CREATE_LIBRARY);
+            db.execSQL(DATABASE_CREATE_TRACKS);
+            db.execSQL(DATABASE_CREATE_SYSTEMS);
+            db.execSQL(DATABASE_CREATE_GAMES);
         }
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-            db.execSQL("DROP TABLE IF EXISTS library");
+            db.execSQL("DROP TABLE IF EXISTS tracks");
+            db.execSQL("DROP TABLE IF EXISTS systems");
+            db.execSQL("DROP TABLE IF EXISTS games");
+            db.execSQL("DROP index IF EXISTS tracks_index");
+            db.execSQL("DROP index IF EXISTS systems_index");
+            db.execSQL("DROP index IF EXISTS games_index");
             onCreate(db);
         }
     }
@@ -377,7 +361,7 @@ public class Library {
         mDbHelper.close();
     }
 
-    private static long saveTrack(Track track) {
+    private static int saveTrack(Track track) {
         ContentValues initialValues = new ContentValues();
         initialValues.put(KEY_PATH, track.getPath());
         initialValues.put(KEY_FILENAME, track.getFilename());
@@ -391,88 +375,96 @@ public class Library {
         initialValues.put(KEY_COPYRIGHT, track.getCopyright());
         initialValues.put(KEY_COMMENT, track.getComment());
         initialValues.put(KEY_DUMPER, track.getDumper());
+        initialValues.put(KEY_TRACKLENGTH, track.getTrackLength());
+        initialValues.put(KEY_INTROLENGTH, track.getIntroLength());
+        initialValues.put(KEY_LOOPLENGTH, track.getLoopLength());
 
-        return mDb.insert(DATABASE_TABLE, null, initialValues);
+        return (int)mDb.insert(DATABASE_TABLE_TRACKS, null, initialValues);
+    }
+
+    private static int saveGame(String game, String system) {
+        ContentValues initialValues = new ContentValues();
+        initialValues.put(KEY_GAME, game);
+        initialValues.put(KEY_SYSTEM, system);
+        return (int)mDb.insert(DATABASE_TABLE_GAMES, null, initialValues);
+    }
+
+    private static int saveSystem(String system) {
+        ContentValues initialValues = new ContentValues();
+        initialValues.put(KEY_SYSTEM, system);
+        return (int)mDb.insert(DATABASE_TABLE_SYSTEMS, null, initialValues);
     }
 
     private static boolean deleteTrack(long rowId) {
 
-        return mDb.delete(DATABASE_TABLE, KEY_ROWID + "=" + rowId, null) > 0;
+        return mDb.delete(DATABASE_TABLE_TRACKS, KEY_ROWID + "=" + rowId, null) > 0;
     }
 
-    private static Cursor fetchAllTracks() {
-//order by game
-        return mDb.query(DATABASE_TABLE, new String[] {KEY_ROWID, KEY_PATH,
+    private static Cursor fetchTracks(String selection, String[] selectionArgs) {    	
+        return mDb.query(DATABASE_TABLE_TRACKS, new String[] {KEY_ROWID, KEY_PATH,
         		KEY_FILENAME, KEY_TRACKNUM, KEY_TRACKCOUNT, KEY_TYPE, KEY_SONG,
-        		KEY_GAME, KEY_SYSTEM, KEY_AUTHOR, KEY_COPYRIGHT, KEY_COMMENT, KEY_DUMPER}, 
-        		null, null, null, null, KEY_GAME);
+        		KEY_GAME, KEY_SYSTEM, KEY_AUTHOR, KEY_COPYRIGHT, KEY_COMMENT, KEY_DUMPER,
+        		KEY_TRACKLENGTH, KEY_INTROLENGTH, KEY_LOOPLENGTH}, 
+        		selection, selectionArgs, null, null, KEY_GAME);
+    }
+
+    private static Cursor fetchSystems() {    	
+        return mDb.query(DATABASE_TABLE_SYSTEMS, new String[] {KEY_ROWID, KEY_SYSTEM}, 
+        		null, null, null, null, KEY_SYSTEM);
+    }
+
+    private static Cursor fetchGames(String system) {
+    	String selection = null;
+    	String[] selectionArgs = null;
+    	if(system != null)
+    	{
+    		selection = KEY_SYSTEM + " = ?";
+    		selectionArgs = new String[]{system};
+    	}
+        return mDb.query(DATABASE_TABLE_GAMES, new String[] {KEY_ROWID, KEY_GAME, KEY_SYSTEM}, 
+        		selection, selectionArgs, null, null, KEY_GAME);
+    }
+    
+    private static Cursor fetchColumn(String col, String selection, String[] selectionArgs) {
+    	
+        return  mDb.query(true, DATABASE_TABLE_TRACKS, new String[] {col}, 
+        		selection, selectionArgs, null, null, null, null);
+    }
+    
+    private static boolean gameExists(String game) throws SQLException 
+    {
+    	Boolean exists = false; 
+        Cursor mCursor =
+                mDb.query(true, DATABASE_TABLE_GAMES, new String[] {KEY_ROWID}, 
+                		KEY_GAME + "= ?", new String[]{game},
+                        null, null, null, null);
+        if (mCursor != null && mCursor.getCount() > 0) {
+        	exists = true;
+        }
+        mCursor.close();
+        return exists;    	
+    }
+    
+    private static boolean systemExists(String system) throws SQLException 
+    {
+    	Boolean exists = false;
+        Cursor mCursor =
+                mDb.query(true, DATABASE_TABLE_SYSTEMS, new String[] {KEY_ROWID}, 
+                		KEY_SYSTEM + "= ?", new String[]{system},
+                        null, null, null, null);
+        if (mCursor != null && mCursor.getCount() > 0) {
+        	exists = true;
+        }
+        mCursor.close();
+        return exists;    	
     }
 	
-	private static Playlist fillPlaylist(Cursor result)
-	{
-		Playlist p =  new Playlist();
-		if(result != null && result.getCount() > 0)
-		{
-			boolean OKSoFar = true;
-			while(result.moveToNext() && OKSoFar)
-			{
-				int idxRowID = result.getColumnIndex(KEY_ROWID);
-				int rowID = result.getInt(idxRowID);
-				int idxPath = result.getColumnIndex(KEY_PATH);
-				String path = result.getString(idxPath);
-				int idxFilename = result.getColumnIndex(KEY_FILENAME);
-				String filename = result.getString(idxFilename);
-				File filePath = new File(path);
-				if( filePath.exists())
-				{
-					int idxTrackNum = result.getColumnIndex(KEY_TRACKNUM);
-					int idxTrackCount = result.getColumnIndex(KEY_TRACKCOUNT);
-					int idxType = result.getColumnIndex(KEY_TYPE);
-					int idxSong = result.getColumnIndex(KEY_SONG);
-					int idxGame = result.getColumnIndex(KEY_GAME);
-					int idxSystem = result.getColumnIndex(KEY_SYSTEM);
-					int idxAuthor = result.getColumnIndex(KEY_AUTHOR);
-					int idxCopyright = result.getColumnIndex(KEY_COPYRIGHT);
-					int idxComment = result.getColumnIndex(KEY_COMMENT);
-					int idxDumper = result.getColumnIndex(KEY_DUMPER);
-					Track track
-					= new Track(path,
-							filename,
-							result.getInt(idxTrackNum),
-							result.getInt(idxTrackCount),
-							result.getString(idxSong),
-							result.getString(idxGame),
-							result.getString(idxSystem),
-							result.getString(idxAuthor),
-							result.getString(idxCopyright),
-							result.getString(idxComment),
-							result.getString(idxDumper), 
-							result.getInt(idxType));
-					track.setRowID(rowID);
-					OKSoFar = p.addTrack(track);
-				}
-				else
-				{
-		            dialogMessage = "Removing " + filename;
-		            Message msg = loadHandler.obtainMessage();
-		            Bundle b = new Bundle();
-		            b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
-		            msg.setData(b);
-		            loadHandler.sendMessage(msg);
-		            deleteTrack(rowID);					
-				}
-			}
-		}
-		result.close();
-		return p;
-	}
-    
     private static boolean trackExists(String path) throws SQLException {
     	Boolean exists = false;
-    	path = path.replace("'", "''");
+    	String[] args = {path}; 
         Cursor mCursor =
-                mDb.query(true, DATABASE_TABLE, new String[] {KEY_ROWID}, 
-                		KEY_PATH + "='" + path + "'", null,
+                mDb.query(true, DATABASE_TABLE_TRACKS, new String[] {KEY_ROWID}, 
+                		KEY_PATH + "= ?", args,
                         null, null, null, null);
         if (mCursor != null && mCursor.getCount() > 0) {
         	exists = true;
@@ -480,47 +472,61 @@ public class Library {
         mCursor.close();
         return exists;
     }
-
-    private static Track fetchTrack(long rowId) throws SQLException {
+    
+    public static Track getTrack(Cursor result)
+    {
     	Track track = null;
-        Cursor mCursor =
-                mDb.query(true, DATABASE_TABLE, new String[] {KEY_ROWID, KEY_PATH,
-                		KEY_FILENAME, KEY_TRACKNUM, KEY_TRACKCOUNT, KEY_TYPE, KEY_SONG,
-                		KEY_GAME, KEY_SYSTEM, KEY_AUTHOR, KEY_COPYRIGHT, KEY_COMMENT, KEY_DUMPER}, 
-                		KEY_ROWID + "=" + rowId, null,
-                        null, null, null, null);
-        if (mCursor != null) {
-            mCursor.moveToFirst();
-			int idxRowID = mCursor.getColumnIndex(KEY_ROWID);
-			int rowID = mCursor.getInt(idxRowID);
-			int idxPath = mCursor.getColumnIndex(KEY_PATH);
-			int idxFilename = mCursor.getColumnIndex(KEY_FILENAME);
-			int idxTrackNum = mCursor.getColumnIndex(KEY_TRACKNUM);
-			int idxTrackCount = mCursor.getColumnIndex(KEY_TRACKCOUNT);
-			int idxType = mCursor.getColumnIndex(KEY_TYPE);
-			int idxSong = mCursor.getColumnIndex(KEY_SONG);
-			int idxGame = mCursor.getColumnIndex(KEY_GAME);
-			int idxSystem = mCursor.getColumnIndex(KEY_SYSTEM);
-			int idxAuthor = mCursor.getColumnIndex(KEY_AUTHOR);
-			int idxCopyright = mCursor.getColumnIndex(KEY_COPYRIGHT);
-			int idxComment = mCursor.getColumnIndex(KEY_COMMENT);
-			int idxDumper = mCursor.getColumnIndex(KEY_DUMPER);
-			track
-			= new Track(mCursor.getString(idxPath),
-					mCursor.getString(idxFilename),
-					mCursor.getInt(idxTrackNum),
-					mCursor.getInt(idxTrackCount),
-					mCursor.getString(idxSong),
-					mCursor.getString(idxGame),
-					mCursor.getString(idxSystem),
-					mCursor.getString(idxAuthor),
-					mCursor.getString(idxCopyright),
-					mCursor.getString(idxComment),
-					mCursor.getString(idxDumper), 
-					mCursor.getInt(idxType));
-			track.setRowID(rowID);   
-        }        
+    	if (result != null) {
+			int idxRowID = result.getColumnIndex(KEY_ROWID);
+			int rowID = result.getInt(idxRowID);
+			int idxPath = result.getColumnIndex(KEY_PATH);
+			int idxFilename = result.getColumnIndex(KEY_FILENAME);
+			int idxTrackNum = result.getColumnIndex(KEY_TRACKNUM);
+			int idxTrackCount = result.getColumnIndex(KEY_TRACKCOUNT);
+			int idxType = result.getColumnIndex(KEY_TYPE);
+			int idxSong = result.getColumnIndex(KEY_SONG);
+			int idxGame = result.getColumnIndex(KEY_GAME);
+			int idxSystem = result.getColumnIndex(KEY_SYSTEM);
+			int idxAuthor = result.getColumnIndex(KEY_AUTHOR);
+			int idxCopyright = result.getColumnIndex(KEY_COPYRIGHT);
+			int idxComment = result.getColumnIndex(KEY_COMMENT);
+			int idxDumper = result.getColumnIndex(KEY_DUMPER);
+			int idxTrackLength = result.getColumnIndex(KEY_TRACKLENGTH);
+			int idxIntroLength = result.getColumnIndex(KEY_INTROLENGTH);
+			int idxLoopLength = result.getColumnIndex(KEY_LOOPLENGTH);
+			
+			track = new Track();
+			track.setPath(result.getString(idxPath));
+			track.setFilename(result.getString(idxFilename));
+			track.setTrackNum(result.getInt(idxTrackNum));
+			track.setTrackCount(result.getInt(idxTrackCount));
+			track.setSong(result.getString(idxSong));
+			track.setGame(result.getString(idxGame));
+			track.setSystem(result.getString(idxSystem));
+			track.setAuthor(result.getString(idxAuthor));
+			track.setCopyright(result.getString(idxCopyright));
+			track.setComment(result.getString(idxComment));
+			track.setDumper(result.getString(idxDumper));
+			track.setType(result.getInt(idxType));
+			track.setTrackLength(result.getInt(idxTrackLength));
+			track.setIntroLength(result.getInt(idxIntroLength));
+			track.setLoopLength(result.getInt(idxLoopLength));
+
+			track.setRowID((int)rowID);   
+        }
         return track;
+    }
+
+    private static Cursor fetchTrack(long rowID) throws SQLException {
+    	Cursor mCursor =
+                mDb.query(true, DATABASE_TABLE_TRACKS, new String[] {KEY_ROWID, KEY_PATH,
+                		KEY_FILENAME, KEY_TRACKNUM, KEY_TRACKCOUNT, KEY_TYPE, KEY_SONG,
+                		KEY_GAME, KEY_SYSTEM, KEY_AUTHOR, KEY_COPYRIGHT, KEY_COMMENT, KEY_DUMPER,
+                		KEY_TRACKLENGTH, KEY_INTROLENGTH, KEY_LOOPLENGTH}, 
+                		KEY_ROWID + "=" + rowID, null,
+                        null, null, null, null);
+        mCursor.moveToLast();;
+        return mCursor;
 
     }
 
@@ -538,14 +544,15 @@ public class Library {
         args.put(KEY_COPYRIGHT, track.getCopyright());
         args.put(KEY_COMMENT, track.getComment());
         args.put(KEY_DUMPER, track.getDumper());
-        return mDb.update(DATABASE_TABLE, args, KEY_ROWID + "=" + track.getRowID(), null) > 0;
+        return mDb.update(DATABASE_TABLE_TRACKS, args, KEY_ROWID + "=" + track.getRowID(), null) > 0;
     }
     
     private static int librarySize()
     {
     	String[] select = {KEY_ROWID};
-    	Cursor mCursor = mDb.query(DATABASE_TABLE, select , null, null, null, null, null);
-    	int count =  mCursor.getCount();
+    	Cursor mCursor = mDb.query(DATABASE_TABLE_TRACKS, select , null, null, null, null, null);
+    	mCursor.moveToLast();
+    	int count =  mCursor.getCount();    	
     	mCursor.close();
     	return count;
     }

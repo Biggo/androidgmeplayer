@@ -1,3 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <TextView android:id="@+id/SongText" xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_height="wrap_content" android:height="40sp" android:layout_width="fill_parent" android:ellipsize="marquee" android:inputType="none" android:lines="1" android:marqueeRepeatLimit="1" android:paddingBottom="8sp" android:paddingTop="8sp" android:singleLine="true"/>
+    

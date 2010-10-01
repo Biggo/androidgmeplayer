@@ -16,8 +16,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE    := gme_player
-LOCAL_SRC_FILES := gme_wrapper.cpp
+LOCAL_MODULE    := libgme
 LOCAL_SRC_FILES += gme/Ay_Apu.cpp
 LOCAL_SRC_FILES += gme/Ay_Apu.h
 LOCAL_SRC_FILES += gme/Ay_Cpu.cpp
@@ -117,6 +116,28 @@ LOCAL_SRC_FILES += gme/Ym2413_Emu.cpp
 LOCAL_SRC_FILES += gme/Ym2413_Emu.h
 LOCAL_SRC_FILES += gme/Ym2612_Emu.cpp
 LOCAL_SRC_FILES += gme/Ym2612_Emu.h
+
+LOCAL_LDLIBS := -lz
+
+include $(BUILD_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := gme_player
+LOCAL_SRC_FILES := GMEPlayerLib.cpp
+
+LOCAL_STATIC_LIBRARIES := libgme
+
+LOCAL_LDLIBS := -lz
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := gme_trackinfo
+LOCAL_SRC_FILES := GMETrackInfo.cpp
+
+LOCAL_STATIC_LIBRARIES := libgme
 
 LOCAL_LDLIBS := -lz
 

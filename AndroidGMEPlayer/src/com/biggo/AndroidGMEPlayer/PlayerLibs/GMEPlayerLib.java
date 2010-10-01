@@ -1,6 +1,6 @@
-package com.biggo.AndroidGMEPlayer;
+package com.biggo.AndroidGMEPlayer.PlayerLibs;
 
-class GMEPlayerLib {
+public class GMEPlayerLib implements IPlayerLib {
 	static {
 		System.loadLibrary("gme_player");
 	}
@@ -20,11 +20,31 @@ class GMEPlayerLib {
 		public native boolean isTrackEnded();
 		public native void setFade( long start_msec, long length_msec);
 		public native void setIgnoreSilence( boolean disable);
-		public native String[] getTrackInfo();
+//		private native String[] getCurrentTrackInfo();
+//		public Track getTrackInfo()
+//		{
+//			String[] fileInfo = getCurrentTrackInfo();
+//			Track newTrack = new Track();
+//			newTrack
+//			Track newTrack = new Track(path,
+//					filename, 
+//					track, 
+//					count, 
+//					fileInfo[4], 
+//					fileInfo[5], 
+//					fileInfo[6], 
+//					fileInfo[7], 
+//					fileInfo[8], 
+//					fileInfo[9], 
+//					fileInfo[10], 
+//					type);
+//			return newTrack;
+//		}
 		public native void setTempo(double tempo);
 		public native void muteChannel(int index, boolean mute);
 		public native void muteChannels( int mask );
 		public native void setGain( double gain);	
 		public native void setEqualizer(double treble, long bass);		
-		public native String[] getFileInfo(String filename, int track);
+
+
 	}

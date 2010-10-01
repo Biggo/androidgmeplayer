@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="com.biggo.AndroidGMEPlayer"
-      android:versionName="0.5.1b" android:versionCode="5">
+      android:versionCode="6" android:versionName="0.6">
     <application android:icon="@drawable/icon" android:label="@string/app_name">
 		<activity android:name=".AndroidGMETabs" class=".AndroidGMETabs">
 			<intent-filter>
@@ -10,9 +10,15 @@
 			</intent-filter>
 		</activity>
         <activity android:name=".AndroidGMEPlayer" class=".AndroidGMEPlayer" android:label="@string/app_name" />
-        <activity android:name=".AndroidGMEPlaylist" class=".AndroidGMEPlaylist" android:label="@string/app_name" />
-        <activity android:name=".AndroidGMESettings" class=".AndroidGMESettings" android:label="@string/app_name" />
-    	<service android:name="PlayerService"/>
-	</application>
+        <activity android:name=".AndroidGMELibrary"></activity><activity android:name=".AndroidGMELibrarySystemList"></activity><activity android:name=".AndroidGMELibraryGameList"></activity>
+        
+        <activity android:name=".AndroidGMEPlaylist" class=".AndroidGMEPlaylist" android:label="@string/app_name" ></activity>
+        <activity android:name=".AndroidGMESettings" class=".AndroidGMESettings" android:label="@string/app_name" ></activity>
+    	<service android:name="PlayerService"></service>
+	
+
+
+
+</application>
     <uses-sdk android:minSdkVersion="3" />
 </manifest> 
