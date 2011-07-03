@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.SimpleCursorTreeAdapter;
 import android.widget.TextView;
+import android.widget.TwoLineListItem;
 
 public class AndroidGMELibraryGameList extends ExpandableListActivity  {
 
@@ -20,8 +21,8 @@ public class AndroidGMELibraryGameList extends ExpandableListActivity  {
                 
         // Set up our adapter
         mAdapter = new GameExpandableTreeAdapter(this, games, 
-        		android.R.layout.simple_expandable_list_item_1, new String[]{Library.KEY_GAME}, new int[]{android.R.id.text1},
-        		android.R.layout.simple_expandable_list_item_1, new String[]{Library.KEY_ROWID}, new int[]{android.R.id.text1});
+        		android.R.layout.simple_expandable_list_item_2, new String[]{Library.KEY_GAME}, new int[]{android.R.id.text2},
+        		android.R.layout.simple_expandable_list_item_2, new String[]{Library.KEY_ROWID}, new int[]{android.R.id.text2});
         setListAdapter(mAdapter);
         //registerForContextMenu(getExpandableListView());
     }
@@ -41,25 +42,23 @@ public class AndroidGMELibraryGameList extends ExpandableListActivity  {
 		@Override
 		protected void bindGroupView(View view, Context context, Cursor cursor,
 				boolean isExpanded) {
-			TextView txt = (TextView)view;
+			TwoLineListItem txt = (TwoLineListItem)view;
 			int idxGame = cursor.getColumnIndex(Library.KEY_GAME);
 			String game = cursor.getString(idxGame);
-			txt.setText(game);
+			txt.getText1().setText(game);
 		}
 		
 
 		@Override
 		protected void bindChildView(View view, Context context, Cursor cursor,
 				boolean isLastChild) {
-			TextView txt = (TextView) view;
-			int idxGame = cursor.getColumnIndex(Library.KEY_GAME);
-			String game = cursor.getString(idxGame);
+			TwoLineListItem txt = (TwoLineListItem)view;
 			int idxSong = cursor.getColumnIndex(Library.KEY_SONG);
 			String song = cursor.getString(idxSong);
 			String text = "";
-			if( !(game.equalsIgnoreCase("") || song.equalsIgnoreCase("")) )
+			if( !song.equalsIgnoreCase(""))
 			{
-				text =  game + " - " + song;
+				text = song;
 			}
 			else
 			{
@@ -71,7 +70,7 @@ public class AndroidGMELibraryGameList extends ExpandableListActivity  {
 				int trackCount = cursor.getInt(idxTrackCount);					
 				text =  filename + " Track: " + (trackNum + 1) + "/" + trackCount;
 			}
-			txt.setText(text);			
+			txt.getText1().setText(text);			
 		}
 
 

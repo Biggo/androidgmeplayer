@@ -3,14 +3,14 @@
       package="com.biggo.AndroidGMEPlayer"
       android:versionCode="6" android:versionName="0.6">
     <application android:icon="@drawable/icon" android:label="@string/app_name">
-		<activity android:name=".AndroidGMETabs" class=".AndroidGMETabs">
+		<activity android:name=".AndroidGMETabs" class=".AndroidGMETabs" android:launchMode="singleInstance">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN"/>
 				<category android:name="android.intent.category.LAUNCHER"/>
 			</intent-filter>
 		</activity>
         <activity android:name=".AndroidGMEPlayer" class=".AndroidGMEPlayer" android:label="@string/app_name" />
-        <activity android:name=".AndroidGMELibrary"></activity><activity android:name=".AndroidGMELibrarySystemList"></activity><activity android:name=".AndroidGMELibraryGameList"></activity>
+        <activity android:name=".AndroidGMELibrary" android:launchMode="singleInstance"></activity><activity android:name=".AndroidGMELibrarySystemList"></activity><activity android:name=".AndroidGMELibraryGameList"></activity>
         
         <activity android:name=".AndroidGMEPlaylist" class=".AndroidGMEPlaylist" android:label="@string/app_name" ></activity>
         <activity android:name=".AndroidGMESettings" class=".AndroidGMESettings" android:label="@string/app_name" ></activity>
@@ -20,5 +20,14 @@
 
 
 </application>
-    <uses-sdk android:minSdkVersion="3" />
+    <uses-sdk android:minSdkVersion="3" android:targetSdkVersion="4" />
+
+<supports-screens></supports-screens>
+
+
+
+
+
+<uses-permission android:name="android.permission.READ_PHONE_STATE"></uses-permission>
+
 </manifest> 

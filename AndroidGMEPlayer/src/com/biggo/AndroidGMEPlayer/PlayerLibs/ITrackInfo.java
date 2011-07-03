@@ -6,4 +6,5 @@ public interface ITrackInfo {
 	
 	public Track getTrack();
 	public boolean isValidFile();
+	public boolean hasTracks();
 }

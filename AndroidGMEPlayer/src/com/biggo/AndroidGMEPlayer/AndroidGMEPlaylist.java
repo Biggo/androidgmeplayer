@@ -1,5 +1,6 @@
 package com.biggo.AndroidGMEPlayer;
 
+import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.database.Cursor;
@@ -98,6 +99,12 @@ public class AndroidGMEPlaylist extends ListActivity {
     		in.setAction(PlayerService.ACTION_CHANGE_TRACK);
         	in.putExtra("TrackNumber", position);
         	startService(in);
+        	Activity parent = AndroidGMEPlaylist.this.getParent();
+        	if(parent == null)
+        	{
+        		in = new Intent(AndroidGMEPlaylist.this, AndroidGMETabs.class);
+        		startActivity(in);
+        	}
 		} catch(Exception e) {
 		} 
 	}

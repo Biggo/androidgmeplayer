@@ -4,7 +4,7 @@ import com.biggo.AndroidGMEPlayer.Track;
 
 public class GMETrackInfo implements ITrackInfo {
 	static {
-		System.loadLibrary("gme_trackinfo");
+		System.loadLibrary("gme_player");
 	}
 	
 	private String filename = "";
@@ -47,6 +47,11 @@ public class GMETrackInfo implements ITrackInfo {
 		}
 		else
 			return null;
+	}
+	
+	public boolean hasTracks()
+	{
+		return track < count;
 	}
 	
 	private native String[] getFileInfo(String filename, int track);

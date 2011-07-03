@@ -20,7 +20,7 @@ JNIEXPORT jstring JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPlayerLi
  * Method:    init
  * Signature: (Ljava/lang/String;II)Z
  */
-JNIEXPORT jboolean JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPlayerLib_init
+JNIEXPORT jboolean JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPlayerLib_initFile
   (JNIEnv *, jobject, jstring, jint, jint);
 
 /*
@@ -92,7 +92,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPla
  * Method:    seek
  * Signature: (J)Z
  */
-JNIEXPORT jboolean JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPlayerLib_seek
+JNIEXPORT jboolean JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPlayerLib_seekTo
   (JNIEnv *, jobject, jlong);
 
 /*

@@ -18,6 +18,7 @@ public class PlayerLibFactory {
 			case Track.TYPE_SAP : return new GMEPlayerLib();
 			case Track.TYPE_SPC : return new GMEPlayerLib();
 			case Track.TYPE_VGM : return new GMEPlayerLib();
+			case Track.TYPE_PSF : return new SexypsfPlayerLib();
 			default : return null;
 		}
 	}

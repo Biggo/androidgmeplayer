@@ -13,7 +13,8 @@ public class Track {
 	public static final int TYPE_SPC = 8; 
 	public static final int TYPE_UNKNOWN = 9; 
 	public static final int TYPE_VGM = 10; 
-	public static final int TYPE_NSFE = 11; 
+	public static final int TYPE_NSFE = 11;
+	public static final int TYPE_PSF = 12;
 	
 	private String path = "";
 	private String filename = "";

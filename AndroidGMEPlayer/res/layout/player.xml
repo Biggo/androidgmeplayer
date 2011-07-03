@@ -22,7 +22,7 @@
 
 
 
-<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/PlayerButtonLayout" android:orientation="horizontal">
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/PlayerButtonLayout" android:orientation="vertical">
 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/txtShuffle"></TextView>
 <ToggleButton android:text="@+id/btnShuffleToggle" android:id="@+id/btnShuffleToggle" android:layout_width="wrap_content" android:layout_height="wrap_content"></ToggleButton>
 </LinearLayout>

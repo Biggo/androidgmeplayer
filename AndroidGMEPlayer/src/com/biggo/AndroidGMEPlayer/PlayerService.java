@@ -54,8 +54,6 @@ public class PlayerService extends Service {
 		
 	//internal variables for playback info
 	private int trackLength = 0;
-	private int trackTime = 0;
-	private int timeOffset = 0;
 			
 	//the main playback thread
 	private Thread t;
@@ -332,7 +330,7 @@ public class PlayerService extends Service {
     	{
 			if(player != null)
 			{
-				player.cleanup();
+				player.stop();
 				player = null;
 			}			
 	
@@ -341,18 +339,21 @@ public class PlayerService extends Service {
 		        audio.flush();
 		        audio.release();
 			}
-			bufferSize = (int)(sampleRate * (buffer / 1000.0)) * 2;			
+			//bufferSize = (int)(sampleRate * (buffer / 1000.0)) * 2;
+			bufferSize = 65536;
 			int size = (AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT));
 			bufferSize = Math.max(size, bufferSize);
-			audio = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufferSize, AudioTrack.MODE_STREAM);		
-			
+			audio = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT, bufferSize, AudioTrack.MODE_STREAM);
+				
 			Track track = p.getCurrentTrack();
 			if(track != null)
 			{
 				player = PlayerLibFactory.getPlayerLib(track.getType());
+				
 				if(player != null)
 				{
-				    isLoaded = player.init(track.getPath(), track.getTrackNum(), sampleRate);
+					player.setAudio(audio);
+				    isLoaded = player.init(track.getPath(), track.getTrackNum());
 				    if(isLoaded)
 				    {		
 						int length = track.getTrackLength();
@@ -366,13 +367,9 @@ public class PlayerService extends Service {
 						else
 							trackLength = 150000;
 						
+						player.setFade(trackLength, fadeLength);						
 						trackLength += fadeLength;
-						
-						trackTime = 0;
-						timeOffset = 0;
-						player.setFade(trackLength - fadeLength, fadeLength);
-						player.setTempo(tempo);
-				    }
+					}
 				    else
 				    {
 						String error = player.getLastError();
@@ -443,10 +440,12 @@ public class PlayerService extends Service {
 	private void playLoop()
 	{				
 		boolean trackEnded = false;
-		long size = (AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT));
+		//long size = (AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_CONFIGURATION_STEREO, AudioFormat.ENCODING_PCM_16BIT));
         while (isPlaying)
-    	{    		        		
-    		short[] buf = player.getSample(size);
+    	{
+			int frames = audio.getPlaybackHeadPosition();
+    		int result = player.play();
+			frames = audio.getPlaybackHeadPosition();
     		String err = player.getLastError();
     		if(err != null)
     		{
@@ -455,15 +454,14 @@ public class PlayerService extends Service {
     		}
     		else
     		{
-	    		int success = audio.write(buf, 0, (int)size);
-	    		if(success < 0)
+    			if(result < 0)
 	    		{
 	    			String error = "Failed to write sample to AudioTrack.";
-	    			if(success == AudioTrack.ERROR)
+	    			if(result == AudioTrack.ERROR)
 	    				error += " A generic error occured.";
-	    			else if(success == AudioTrack.ERROR_BAD_VALUE)
+	    			else if(result == AudioTrack.ERROR_BAD_VALUE)
 	    				error += " Invalid data was provided.";
-	    			else if(success == AudioTrack.ERROR_INVALID_OPERATION)
+	    			else if(result == AudioTrack.ERROR_INVALID_OPERATION)
 	    				error += " Invalid operation.";	    			
 
 	    			showError(error);
@@ -479,7 +477,7 @@ public class PlayerService extends Service {
 		if(trackEnded)
 		{
 	    	Library.getCurrentPlaylist().getNextTrack();
-			player.cleanup();
+			player.stop();
 			audio.stop();
 			audio.flush();
 			isLoaded = false;
@@ -495,11 +493,10 @@ public class PlayerService extends Service {
 			{
 				pause();			
 			}
-			player.cleanup();
+			player.stop();
 			audio.stop();
 			audio.flush();
 			isLoaded = false;
-			trackTime = 0;
 		}
 	}
 	
@@ -546,7 +543,7 @@ public class PlayerService extends Service {
 	    	stop();
 	    	p.getNextTrack();
 	    	init();
-	    	if(play)
+	    	//if(play)
 	    		play();
 	    	updateTrackInfo();
     	}
@@ -561,26 +558,23 @@ public class PlayerService extends Service {
 	    	p.getPreviousTrack();
 	    	stop();
 	    	init();
-	    	if(play)
+	    	//if(play)
 	    		play();
 	    	updateTrackInfo();
     	}
     }
 		
+    private int getTrackTime()
+    {
+    	return (int)((audio.getPlaybackHeadPosition() * tempo) / 44.1);
+    }
+    
 	public int getTime()
 	{
 		if(isLoaded)
 		{
-			if(tempo == 1.0)
-			{
-				trackTime = timeOffset + ((audio.getPlaybackHeadPosition() / sampleRate) * 1000);
-				return trackTime;
-			}
-			else
-			{
-				trackTime = (int)player.getTime();
-				return trackTime;
-			}
+			return getTrackTime();
+
 		}
 		else
 			return 0;
@@ -611,20 +605,7 @@ public class PlayerService extends Service {
 			else if (pos > trackLength)
 				pos = trackLength;
 			
-			timeOffset = pos;
-			if(pos > trackTime)
-			{
-				int n = pos - trackTime;
-				int sec = n / 1000;
-				n -= sec * 1000;
-				n = (sec * sampleRate + n * sampleRate / 1000) * 2;
-				player.skip(n);
-			}
-			else
-			{				
-				player.seek(pos);
-				player.setFade(trackLength - fadeLength, fadeLength);				
-			}
+			player.seek(pos);
 			if (playTrack)
 				play();
 		}
@@ -652,7 +633,7 @@ public class PlayerService extends Service {
     	sampleRate = Integer.parseInt(rate);
     	if(isLoaded)
     	{
-			int time = trackTime;
+			int time = getTrackTime();
 			boolean play = isPlaying;
 			stop();
 			init();
@@ -669,7 +650,7 @@ public class PlayerService extends Service {
     	buffer = buf;
     	if(isLoaded)
     	{
-			int time = trackTime;
+			int time = getTrackTime();
 			boolean play = isPlaying;
 			stop();
 			init();
@@ -690,7 +671,7 @@ public class PlayerService extends Service {
 			
     	if(isLoaded)
     	{
-			int time = trackTime;
+			int time = getTrackTime();
 			boolean play = isPlaying;
 			stop();
 			init();
@@ -707,7 +688,7 @@ public class PlayerService extends Service {
     	this.tempo = tempo;
     	if(isLoaded)
     	{
-			player.setTempo(tempo);	
+			//player.setTempo(tempo);	
     	}	
 		
 	}

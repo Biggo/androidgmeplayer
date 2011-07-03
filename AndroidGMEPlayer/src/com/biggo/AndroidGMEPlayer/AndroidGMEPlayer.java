@@ -95,7 +95,8 @@ public class AndroidGMEPlayer extends Activity {
 	CompoundButton.OnCheckedChangeListener() {
 		public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 	    	Playlist curr = Library.getCurrentPlaylist();
-	    	curr.setRandomMode(isChecked);
+	    	if (curr != null)
+	    		curr.setRandomMode(isChecked);
     	}
     };
 	

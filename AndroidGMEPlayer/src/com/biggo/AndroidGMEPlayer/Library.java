@@ -200,13 +200,13 @@ public class Library {
 		
 		if (fileInfo == null)
 		{
-			String error = "Invalid file format";
+			/*String error = "Invalid file format";
             dialogMessage = error;
             Message msg = loadHandler.obtainMessage();
             Bundle b = new Bundle();
             b.putInt("LoadingStatus", AndroidGMETabs.LOAD_UPDATE_MESSAGE);
             msg.setData(b);
-            loadHandler.sendMessage(msg);			
+            loadHandler.sendMessage(msg);	*/		
 			return false;
 		}
 		else
@@ -232,13 +232,16 @@ public class Library {
         		{
         			saveGame(game, system);
         		}
+                int rowID = (int) saveTrack(track);
+                track.setRowID(rowID);
+            	result = result && rowID != -1;
         	}
-            while(track != null)
+            while(fileInfo.hasTracks())
             {
+            	track = fileInfo.getTrack();
                 int rowID = (int) saveTrack(track);
                 track.setRowID(rowID);
             	result = result && rowID != -1; //&& library.addTrack(track);
-            	track = fileInfo.getTrack();
 			}
 			return result;
 		}		
@@ -323,7 +326,10 @@ public class Library {
 	public static void setCurrentPlaylist(Playlist playlist)
 	{
 		if(!currentPlaylist.equals(playlist))
+		{
+			currentPlaylist.getSongs().close();
 			currentPlaylist = playlist;
+		}
 	}
     
     private static class DatabaseHelper extends SQLiteOpenHelper {

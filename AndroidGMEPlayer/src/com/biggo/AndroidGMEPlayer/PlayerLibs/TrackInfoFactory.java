@@ -38,6 +38,10 @@ public class TrackInfoFactory {
 		{
 			return new GMETrackInfo(path, filename, Track.TYPE_SAP);
 		}
+		/*else if(filename.endsWith(".psf"))
+		{
+			return new SexypsfTrackInfo(path, filename, Track.TYPE_PSF);
+		}*/
 		else
 			return null;
 		

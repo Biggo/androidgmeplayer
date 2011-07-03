@@ -1,4 +1,4 @@
-const char* lastError;
+const char* lastTrackError;
 
 #include "gme/Music_Emu.h"
 #include <stdlib.h>
@@ -6,40 +6,40 @@ const char* lastError;
 #include "string.h"
 #include "com_biggo_AndroidGMEPlayer_PlayerLibs_GMETrackInfo.h"
 
-JNIEXPORT jobjectArray JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMETrackInfo_getFileInfo
+JNIEXPORT jobjectArray JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPlayerLib_GMETrackInfo_getFileInfo
 (JNIEnv * env, jobject obj, jstring file, jint track)
 {
 	const char* filename = env->GetStringUTFChars(file, NULL);
 
 	gme_type_t file_type;
-	lastError = gme_identify_file(filename, &file_type );
-	if( lastError )
+	lastTrackError = gme_identify_file(filename, &file_type );
+	if( lastTrackError )
 		return NULL;
 	if ( !file_type )
 	{
-		lastError = "Unsupported music type ";
+		lastTrackError = "Unsupported music type ";
 		return NULL;//handle_error( "Unsupported music type" );
 	}
 
 	Music_Emu* fileInfo = file_type->new_info();
 	if ( !fileInfo )
 	{
-		lastError = "Out of memory";
+		lastTrackError = "Out of memory";
 		delete fileInfo;
 		return NULL;// handle_error( "Out of memory" );
 	}
 
 	// Load music file into emulator
-	lastError = fileInfo->load_file(filename);
-	if( lastError )
+	lastTrackError = fileInfo->load_file(filename);
+	if( lastTrackError )
 	{
 		delete fileInfo;
 		return NULL;
 	}
 
 	track_info_t  trackInfo;
-	lastError = fileInfo->track_info(&trackInfo, track);
-	if(lastError)
+	lastTrackError = fileInfo->track_info(&trackInfo, track);
+	if(lastTrackError)
 	{
 		delete fileInfo;
 		return NULL;
@@ -73,9 +73,9 @@ JNIEXPORT jobjectArray JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMETra
 }
 
 
-JNIEXPORT jstring JNICALL Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMETrackInfo_getLastError
+JNIEXPORT jstring JNICALL  Java_com_biggo_AndroidGMEPlayer_PlayerLibs_GMEPlayerLib_GMETrackInfo_getLastError
 (JNIEnv * env, jobject obj)
 {
-	jstring str = env->NewStringUTF(lastError);
+	jstring str = env->NewStringUTF(lastTrackError);
 	return str;
 }

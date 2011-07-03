@@ -134,11 +134,21 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE    := gme_trackinfo
-LOCAL_SRC_FILES := GMETrackInfo.cpp
+VERSION := 0.4.8
+SEXY_DIR  := sexypsf-0.4.8
 
-LOCAL_STATIC_LIBRARIES := libgme
+SEXY_INC_DIR := -I$(LOCAL_PATH)/$(SEXY_DIR)
 
-LOCAL_LDLIBS := -lz
+SEXY_OBJS =	PsxBios.o PsxCounters.o PsxDma.o Spu.o PsxHw.o PsxMem.o Misc.o	\
+	R3000A.o PsxInterpreter.o PsxHLE.o spu/spu.o
+
+SEXY_SRC_FILES  := $(addprefix $(SEXY_DIR)/, $(SEXY_OBJS:.o=.c))
+LOCAL_MODULE    := sexypsf
+LOCAL_SRC_FILES := sexypsf_android.c sexypsf_wrapper.c $(SEXY_SRC_FILES)
+
+SEXY_FLAGS = -DPSS_STYLE=1 -DSPSFVERSION="\"${VERSION}\"" -fPIC
+LOCAL_CFLAGS += $(SEXY_INC_DIR) -Wall -O3 -finline-functions -ffast-math $(SEXY_FLAGS)
+
+LOCAL_LDLIBS := -lz -llog 
 
 include $(BUILD_SHARED_LIBRARY)

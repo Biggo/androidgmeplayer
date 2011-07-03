@@ -113,7 +113,7 @@ public Playlist(Cursor result)
 				{
 					randIdx--;
 		    		if(randIdx < 0)
-		    			randIdx = randSize;	
+		    			randIdx = randSize - 1;	
 					currentIdx = randomOrder.get(randIdx);				
 				}
 			}
